@@ -1,0 +1,18 @@
+{
+    "JsonDepth":  2,
+    "Mode":  "Both",
+    "DiagOut":  "Grid",
+    "HTMLFontSize":  14,
+    "TabExpansionWidth":  2,
+    "ListingLineNoWidth":  3,
+    "IncludeTokens":  true,
+    "OpenInWebBrowser":  true,
+    "OutputToTemp":  true,
+    "TokenReport":  {
+                        "OutputTo":  "Html",
+                        "IncludeCommentType":  true,
+                        "IncludeStartProperty":  true,
+                        "MaxCommentLength":  50
+                    },
+    "TypeName":  "My.Settings"
+}
