@@ -2,8 +2,8 @@
 
 My name is Randy Turner, I'm a retired Developer\Programmer with 50 years of experience in standalone & network applications development, and network administration.
 
-The purpose of this repository is to share many of the my most popular Powershell Utilities and Scripts
-I've created since Powershell was first released.
+The purpose of this repository is to share many of my most popular Powershell Utilities and Scripts
+created since Powershell was first released.
 
 This repository includes a collection of Powershell Utilities and Scripts many of which may be used
 as reusable modules via the Import-Module command in building more complex scripts. One such script is
