@@ -12,7 +12,7 @@ v1.1 - 03/15/2020 - Added New-ObjectArray function
 v1.0 - 06/05/2014 - Original Release
 
 .SYNOPSIS
-Provides a wrapper for utility fumctions used with WinForms.
+Provides a wrapper for utility functions used with WinForms.
 #>
 
 #region Common Variables
