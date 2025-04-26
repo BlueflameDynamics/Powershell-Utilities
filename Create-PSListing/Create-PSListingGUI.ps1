@@ -558,7 +558,7 @@ Function Mount-Settings{
 		$GrpTokenRpt.Item('ChkIncludeCommentType').Checked = $My.Settings.TokenReport.IncludeCommentType
 		$GrpTokenRpt.Item('ChkIncludeStartProperty').Checked = $My.Settings.TokenReport.IncludeStartProperty
 		$GrpTokenRpt.Item('MaxCommentLength').Value = $My.Settings.TokenReport.MaxCommentLength
-		$GrpTokenRpt.Item('Rdo'+$My.Settings.TokenReport.OutputTo).Checked = $True5
+		$GrpTokenRpt.Item('Rdo'+$My.Settings.TokenReport.OutputTo).Checked = $True
 	}
 }
 Function Get-DialogResults{
