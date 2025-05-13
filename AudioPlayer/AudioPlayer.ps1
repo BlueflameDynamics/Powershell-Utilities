@@ -824,7 +824,7 @@ function Show-MainForm{
 	$FileMenuBar = New-ObjectArray -TypeName Windows.Forms.ToolStripSeparator -Count 2
 	$X = $ImageList[[ImageListID]::LgIcon].Images
 	$FileMenuItems|ForEach-Object{$_.Image = $X[$X.IndexOfKey($_.Text)]}
-	Remove-Variable X
+	Remove-Variable -Name X
 
 	Set-MenuItem (Split-EnumNames -Enum ([ToolMenuItem])) $ToolMenuItems $MainMenuItemSize 'ToolMenuItem'
 	$ToolMenuItems[[ToolMenuItem]::ResetColumnWidth].Add_Click({Set-ListViewColumnWidths})
