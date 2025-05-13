@@ -2,7 +2,7 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 1.0u - 04/04/2025
+Version: 1.0v - 05/12/2025
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
@@ -140,7 +140,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 1.0u - 04/04/2025'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 1.0v - 05/12/2025'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -479,9 +479,9 @@ function Invoke-AudioFile{
 	$MediaPlayer.Open($Path)
 	Start-Sleep -Milliseconds ($OpenDelay*1000) #This allows the player time to load the audio file
 	$MediaPlayer.Volume = 1
-	$LblRuntime.Text = "Duration: [{0:$TimeFormat}]" -f $MediaPlayer.NaturalDuration.TimeSpan
 	$MediaPlayer.Play()
 	Do	{
+		$LblRuntime.Text = "Duration: [{0:$TimeFormat}]" -f $MediaPlayer.NaturalDuration.TimeSpan
 		$LblPosition.Text = & $Get_Position
 		if(([Audio]::Volume*100) -ne $Slider.Value){
 			if($ToolMenuItems[[ToolMenuItem]::LockVolume].Checked){
@@ -494,6 +494,7 @@ function Invoke-AudioFile{
 	}
 	Until($MediaPlayer.Position -eq $MediaPlayer.NaturalDuration.TimeSpan -or $StopPlayback -eq $True)
 	$LblPosition.Text = & $Get_Position
+	[Windows.Forms.Application]::DoEvents()
 	$MediaPlayer.Stop()
 	$MediaPlayer.Close()
 }
