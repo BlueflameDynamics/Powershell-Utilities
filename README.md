@@ -15,7 +15,7 @@ I've also included both a 32-bit & 64-bit version of my PSRun3 Windows Powershel
 PSRun3.exe -help
 
 #File Catalog:
-##https://github.com/BlueflameDynamics/Powershell-Utilities\AudioPlayer
+https://github.com/BlueflameDynamics/Powershell-Utilities\AudioPlayer
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | AppRegistry.ps1 | Application Registry Functions | 
@@ -36,22 +36,22 @@ PSRun3.exe -help
  | UtilitiesLib.ps1 | Utility Function Library | 
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library | 
 
-##https://github.com/BlueflameDynamics/Powershell-Utilities\Build-HexDump
+https://github.com/BlueflameDynamics/Powershell-Utilities\Build-HexDump
  | Filename     | Description  |
  | ------------ | ------------ |                                        
  | Build-HexDump.ps1 | Hexidecimal File Dump Cmdlet | 
                         
-##https://github.com/BlueflameDynamics/Powershell-Utilities\Convert-Image
+https://github.com/BlueflameDynamics/Powershell-Utilities\Convert-Image
  | Filename     | Description  |
  | ------------ | ------------ |                                          
  | Convert-Image.ps1 | Functions for resizing & converting an image file type. | 
                         
-##https://github.com/BlueflameDynamics/Powershell-Utilities\Convert-SpacesToTabs
+https://github.com/BlueflameDynamics/Powershell-Utilities\Convert-SpacesToTabs
  | Filename     | Description  |
  | ------------ | ------------ |                                   
  | Convert-SpacesToTabs.ps1 | Cmdlet to Convert Spaces to Tabs |
           
-##https://github.com/BlueflameDynamics/Powershell-Utilities\Create-PSListing
+https://github.com/BlueflameDynamics/Powershell-Utilities\Create-PSListing
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
@@ -96,7 +96,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities\MovieLauncher
  | UtilitiesLib.ps1 | Utility Function Library | 
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library |
 
-##https://github.com/BlueflameDynamics/Powershell-Utilities\PSRun-Host-Application
+https://github.com/BlueflameDynamics/Powershell-Utilities\PSRun-Host-Application
  | Filename     | Description  |
  | ------------ | ------------ |                                
  | PSRun3.exe | 32-bit Powershell Host | 
@@ -104,12 +104,12 @@ https://github.com/BlueflameDynamics/Powershell-Utilities\MovieLauncher
  | PSRun3_Help.png | Sample Help |
  | PSRun3X64.exe | 64-bit Powershell Host | 
                                               
-##https://github.com/BlueflameDynamics/Powershell-UtilitiesSet-OpticalDriveState
+https://github.com/BlueflameDynamics/Powershell-UtilitiesSet-OpticalDriveState
  | Filename     | Description  |
  | ------------ | ------------ |                                  
  | Set-OpticalDriveState.ps1 | Cmdlet to set\get Optical Drive State |
         
-##https://github.com/BlueflameDynamics/Powershell-UtilitiesShow-ColorPicker
+https://github.com/BlueflameDynamics/Powershell-UtilitiesShow-ColorPicker
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
@@ -121,12 +121,12 @@ https://github.com/BlueflameDynamics/Powershell-Utilities\MovieLauncher
  | Show-ColorPicker_Desc.pdf | Show-ColorPicker.ps1 Description Document |
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library |
                    
-##https://github.com/BlueflameDynamics/Powershell-UtilitiesShow-DynamicMenu
+https://github.com/BlueflameDynamics/Powershell-UtilitiesShow-DynamicMenu
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | Show-DynamicMenu.ps1 | Cmdlet\Library to display a Dynamic Menu |
                   
-##https://github.com/BlueflameDynamics/Powershell-Utilities\ZipFiles
+https://github.com/BlueflameDynamics/Powershell-Utilities\ZipFiles
  | Filename     | Description  |
  | ------------ | ------------ |                                               
  | AudioPlayer.zip | AudioPlayer Modules |
