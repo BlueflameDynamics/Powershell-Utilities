@@ -15,7 +15,7 @@ I've also included both a 32-bit & 64-bit version of my PSRun3 Windows Powershel
 PSRun3.exe -help
 
 ## File Catalog:
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/AudioPlayer
+ [AudioPlayer Applicationn](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/AudioPlayer)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | AppRegistry.ps1 | Application Registry Functions | 
@@ -36,22 +36,22 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/AudioPlayer
  | UtilitiesLib.ps1 | Utility Function Library | 
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library | 
 
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Build-HexDump
+ [Build-HexDump Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Build-HexDump)
  | Filename     | Description  |
  | ------------ | ------------ |                                        
  | Build-HexDump.ps1 | Hexidecimal File Dump Cmdlet | 
                         
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Convert-Image
+ [Convert-Image Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Convert-Image)
  | Filename     | Description  |
  | ------------ | ------------ |                                          
  | Convert-Image.ps1 | Functions for resizing & converting an image file type. | 
                         
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Convert-SpacesToTabs
+ [Convert-SpacesToTabs Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Convert-SpacesToTabs)
  | Filename     | Description  |
  | ------------ | ------------ |                                   
  | Convert-SpacesToTabs.ps1 | Cmdlet to Convert Spaces to Tabs |
           
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Create-PSListing
+ [Create-PSListing Cmdlet Group](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Create-PSListing)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
@@ -67,7 +67,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Create-PSLis
  | PSRun3X64.exe | 64-bit Powershell Host |  
  | WinFormsLibrary.ps1 | WinForms Function Library | 
 
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Export-MediaFileDetailsEx
+ [Export-MediaFileDetailsEx Cmdlet Group](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Export-MediaFileDetailsEx)
  | Filename     | Description  |
  | ------------ | ------------ |                             
  | Export-MediaFileDetailsEx.ps1 | Cmdlet for Export of Media File Extended Properties |
@@ -75,7 +75,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Export-Media
  | MetadataIndexLib.ps1 | MetaData Index Access Functions |
  | ScriptPathInfo.ps1 | Script Information Library |
 
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/MovieLauncher
+ [MovieLauncher Application](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/MovieLauncher)
  | Filename     | Description  |
  | ------------ | ------------ |                                          
  | BlueflameDynamics.IconTools.dll | Icon Utils Library | 
@@ -96,7 +96,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/MovieLaunche
  | UtilitiesLib.ps1 | Utility Function Library | 
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library |
 
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/PSRun-Host-Application
+ [PSRun-Host-Application (No Console Window)](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/PSRun-Host-Application)
  | Filename     | Description  |
  | ------------ | ------------ |                                
  | PSRun3.exe | 32-bit Powershell Host | 
@@ -104,12 +104,12 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/PSRun-Host-A
  | PSRun3_Help.png | Sample Help |
  | PSRun3X64.exe | 64-bit Powershell Host | 
                                               
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Set-OpticalDriveState
+ [Set-OpticalDriveState Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Set-OpticalDriveState)
  | Filename     | Description  |
  | ------------ | ------------ |                                  
  | Set-OpticalDriveState.ps1 | Cmdlet to set\get Optical Drive State |
         
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-ColorPicker
+ [Show-ColorPicker\Get-ColorInfo Cmdlets](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-ColorPicker)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
@@ -121,12 +121,12 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-ColorPi
  | Show-ColorPicker_Desc.pdf | Show-ColorPicker.ps1 Description Document |
  | WinFormsLibrary.ps1 | WinForms Dialog\Utility Function Library |
                    
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-DynamicMenu
+ |[Show-DynamicMenu Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-DynamicMenu)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | Show-DynamicMenu.ps1 | Cmdlet\Library to display a Dynamic Menu |
                   
-https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/ZipFiles
+ [ZipFiles](https ://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/ZipFiles)
  | Filename     | Description  |
  | ------------ | ------------ |                                               
  | AudioPlayer.zip | AudioPlayer Modules |
