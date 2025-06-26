@@ -56,11 +56,11 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Create-PSLis
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
  | Create-PSListing.ps1 | Powershell Script Listing Cmdlet |
- | Create-PSListing.SampleListing.pdf | Sanple Script Listing |
- | Create-PSListingGUI.json | Powershell Listing GUI configuration json | 
+ | Create-PSListing.SampleListing.pdf | Sample Powershell Script Listing |
+ | Create-PSListingGUI.json | Powershell Script Listing GUI configuration json | 
  | Create-PSListingGUI.ps1 | Powershell Listing GUI front end |
  | Create-PSListingGUI.SampleListing.pdf | Sanple Script Listing | 
- | Create-PsListingGUI_Form.png | Powershell Listing GUI Form Sample |
+ | Create-PsListingGUI_Form.png | Powershell Script Listing GUI Form Sample |
  | Exists.ps1 | .Net Directory/File existance test function | 
  | OSInfoLib.ps1 | Windows OS Info Library | 
  | PSRun3.exe | 32-bit Powershell Host | 
@@ -130,7 +130,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/ZipFiles
  | Filename     | Description  |
  | ------------ | ------------ |                                               
  | AudioPlayer.zip | AudioPlayer Modules |
- | Create-PSListingGUI.zip | Powershell Listing Modules |
+ | Create-PSListingGUI.zip | Powershell Script Listing Modules |
  | Export-MediaFileDetailsEx.zip | Export-MediaFileDetailsEx Cmdlet
  | MovieLauncherV8.zip | MovieLauncher Modules |
  | Show-ColorPicker.zip | ColorPicker Modules |
