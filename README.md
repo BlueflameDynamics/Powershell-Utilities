@@ -130,8 +130,8 @@ https://github.com/BlueflameDynamics/Powershell-Utilities\ZipFiles
  | Filename     | Description  |
  | ------------ | ------------ |                                               
  | AudioPlayer.zip | AudioPlayer Modules |
- | Create-PSListingGUI.zip | Powershell Listing Modules |
- | Export-MediaFileDetailsEx.zip | Export-MediaFileDetailsEx Cmdlet
+ | Create-PSListingGUI.zip | Powershell Script Listing Modules |
+ | Export-MediaFileDetailsEx.zip | Export-MediaFileDetailsEx Cmdlet Modules |
  | MovieLauncherV8.zip | MovieLauncher Modules |
  | Show-ColorPicker.zip | ColorPicker Modules |
 
