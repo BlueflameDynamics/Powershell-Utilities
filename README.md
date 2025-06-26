@@ -55,7 +55,7 @@ https://github.com/BlueflameDynamics/Powershell-Utilities\Create-PSListing
  | Filename     | Description  |
  | ------------ | ------------ |                                       
  | BlueflameDynamics.IconTools.dll | Icon Utils Library |
- | Create-PSListing.ps1 | Powershell Listing Cmdlet |
+ | Create-PSListing.ps1 | Powershell Script Listing Cmdlet |
  | Create-PSListing.SampleListing.pdf | Sanple Script Listing |
  | Create-PSListingGUI.json | Powershell Listing GUI configuration json | 
  | Create-PSListingGUI.ps1 | Powershell Listing GUI front end |
