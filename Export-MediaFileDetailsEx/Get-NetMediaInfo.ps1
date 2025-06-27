@@ -1,104 +1,194 @@
+<#
+.NOTES
+-----------------------------------------------------------------
+Name:	 Get-NetMediaInfo.ps1
+Version:  4.2 - 09/16/2022
+Author:   Randy E. Turner
+Email:	turner.randy21@yahoo.com
+Revision: This version supports full process automation and has
+been tested using Windows Powershell v5.1 & Powershell Core V7.15+
+v4.2 - Added a test to insure internet connectivity.
+-----------------------------------------------------------------
+----------------------------------------------------------------------------------------
+Security Note: This is an unsigned script, Powershell security may require you run the
+Unblock-File cmdlet with the Fully qualified filename before you can run this script,
+assuming PowerShell security is set to RemoteSigned.
+----------------------------------------------------------------------------------------
+
+.SYNOPSIS
+This Cmdlet will run my Export-MediaFileDetailsEx.ps1
+collecting data for a fixed set of location(s) and
+optionally import the results into a predefined 
+MSAccess database, generate the requsted report(s), &
+transfer a predefined set of files to a predefined location,
+	
+.DESCRIPTION
+Network Media File inventory update Master. 
+
+.PARAMETER Mode
+Mode of Operation <Required> All, Audio, Image, or Video
+
+.PARAMETER Publish Alias: P
+Switch to enable importing gathered data into Access,
+outputting the associated Access reports as PDF files,
+and copying the I/O file to the NAS.
+
+.PARAMETER Quiet Alias: Q
+Switch to enable running Access Quietly.
+
+.PARAMETER Reboot Alias: R
+Switch to enable rebooting the host computer upon completion.
+
+.EXAMPLE
+To collect Video File Properties run Access Quietly & Reboot
+Get-NetMediaInfo -Mode Video -P -Q -R
+
+.EXAMPLE
+To collect All Media File Data run Access Quietly & Reboot
+Get-NetMediaInfo -Mode Video -Publish -Quiet -Reboot
+#>
+
+[CmdletBinding()]
 param(
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory)]
 			[ValidateNotNullOrEmpty()]
-			[ValidateSet("All","Audio","Image","Video")]
+			[ValidateSet('All','Audio','Image','Video')]
 			[String]$Mode,
-		[Parameter(Mandatory=$False)][Alias('R')][Switch]$Reboot)
+		[Parameter()][Alias('P')][Switch]$Publish,
+		[Parameter()][Alias('Q')][Switch]$Quiet,
+		[Parameter()][Alias('R')][Switch]$Reboot)
 
-	$Modes = @("All","Audio","Image","Video")
-	$ModeIdx = [Array]::IndexOf($Modes,$Mode)
-	$EmailTxt = @(
-		"Get-NetMediaInfo Completed!",
-		"Get-NetMediaInfo of TPSI-NET Completed!",
-		".\EventTimeLog.txt")
-	$Locations = @(
-		"\\MYBOOKLIVE\Public\Shared Music\",
-		"\\MYBOOKLIVE\Public\Shared Pictures\",
-		"\\MYBOOKLIVE\Public\Shared Videos\")
+#region Module Import
+#Set-Location -Path <fully qualified path to NAS Inventory scripts>
+Import-Module -Name .\Exists.ps1 -Force
+Import-Module -Name .\Test-InternetConnection.ps1 -Force
+#endregion
 
-function Suspend-PowerPlan
-{
-	param
-		(
-		[Parameter(Mandatory=$false)][Alias('A')][switch]$Away,
-		[Parameter(Mandatory=$false)][Alias('D')][switch]$Display,
-		[Parameter(Mandatory=$false)][Alias('S')][switch]$System
-		)
+#region Common Variables
+$ScriptName = [IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)
+$MyParam = ($MyInvocation.MyCommand).Parameters
+$Modes  = $MyParam['Mode'].Attributes.ValidValues
+$ModeIdx = [Array]::IndexOf($Modes,$Mode)
+$LogFile = [System.IO.Path]::GetFullPath(-join (".\",$ScriptName,"_Log.txt"))
+$TargetServer = '\\MyCloud1\Public'
+$EmailTxt = @(
+	"$ScriptName Completed!",
+	"$ScriptName of TPSI-NET Completed!",
+	 $LogFile)
+$Locations = @(
+	"$TargetServer\Shared Music\",
+	"$TargetServer\Shared Pictures\",
+	"$TargetServer\Shared Videos\")
+$ExportFile = @(
+	'MediaCatalog.accdb',
+	'MCAR001.pdf',
+	'MCIR001.pdf',
+	'MCVR001.pdf',
+	'AudioReport.txt',
+	'ImageReport.txt',
+	'VideoReport.txt')
+$CurrentLocation = Get-Location
+$ExportFile = $ExportFile |ForEach-Object {[System.IO.Path]::GetFullPath(("{0}\{1}" -f $CurrentLocation,$_))}
+$ExportTarget = "$TargetServer\Shared Applications\PowerShell\Scripts\"
+#endregion
 
-	$code=@' 
-[DllImport("kernel32.dll", CharSet = CharSet.Auto,SetLastError = true)]
-  public static extern void SetThreadExecutionState(uint esFlags);
-'@
+function Get-RegistryValue{
+	param(
+		[Parameter(Mandatory)][String]$Key,
+		[Parameter(Mandatory)][String]$Value)
+	(Get-ItemProperty -Path $Key).$Value
+}
 
-	$settings = @(0,0,0)
-	$ste = Add-Type -memberDefinition $code -name System -namespace Win32 -passThru 
-	$ES_CONTINUOUS = [uint32]"0x80000000" #Requests that the other EXECUTION_STATE flags set remain in effect until SetThreadExecutionState is called again with the ES_CONTINUOUS flag set and one of the other EXECUTION_STATE flags cleared.
-	$ES_AWAYMODE_REQUIRED = [uint32]"0x00000040" #Requests Away Mode to be enabled.
-	$ES_DISPLAY_REQUIRED = [uint32]"0x00000002" #Requests display availability (display idle timeout is prevented).
-	$ES_SYSTEM_REQUIRED = [uint32]"0x00000001" #Requests system availability (sleep idle timeout is prevented).
-
-	if($Away.IsPresent)   {$settings[0] = $ES_AWAYMODE_REQUIRED}
-	if($Display.IsPresent){$settings[1] = $ES_DISPLAY_REQUIRED}
-	if($System.IsPresent) {$settings[2] = $ES_SYSTEM_REQUIRED}
-	$ste::SetThreadExecutionState($ES_CONTINUOUS -bor $settings[0] -bor $settings[1] -bor $settings[2])  
-}    
-
-function Play-Sound
-{
-param(
-    [Parameter(Mandatory=$True)][Alias('F')][String]$SoundFile,
-    [Parameter(Mandatory=$False)][Alias('D')][int]$Delay=3)
-
-$SoundLib = "h:\Software\Sounds\"
-(new-object Media.SoundPlayer "$SoundLib\$SoundFile").play();
+function Play-Sound{
+	param(
+		[Parameter(Mandatory)][Alias('F')][String]$SoundFile,
+		[Parameter()][Alias('D')][int]$Delay=3)
+$SoundLib = [System.IO.Path]::GetFullPath(("{0}{1}"-f (Get-Location),'\Audio\'))
+$AudioFile = -join ($SoundLib,$SoundFile)
+(New-Object -TypeName Media.SoundPlayer -ArgumentList "$AudioFile").Play()
 Start-Sleep -Seconds $Delay
 }
 
-function Get-Audio
-	{.\Export-MediaFileDetailsEx -Mode Audio -Dir $Locations[0] -Log $EmailTxt[2] -R -LC -LA}
+function Export-Files{
+Play-Sound -SoundFile 'TransferringData.wav'
+if(Test-Exists -Mode Directory $ExportTarget){
+	For($C = 0;$C -le $ExportFile.GetUpperBound(0); $C++){
+		if(Test-Exists -Mode File $ExportFile[$C]){
+			Copy-Item -Path $ExportFile[$C] -Destination $ExportTarget -Force}
+		}
+	}
+	Play-Sound -SoundFile 'DataTransferComplete.wav'
+}
+
+function Get-Audio{
+.\Export-MediaFileDetailsEx -Mode Audio -Dir $Locations[0] -R -LC -LA -Log $EmailTxt[2]}
  
-function Get-Image
-	{.\Export-MediaFileDetailsEx -Mode Image -Dir $Locations[1] -Log $EmailTxt[2] -R -LC -LA}
+function Get-Image{
+.\Export-MediaFileDetailsEx -Mode Image -Dir $Locations[1] -R -LC -LA -Log $EmailTxt[2]}
 
-function Get-Video
-	{.\Export-MediaFileDetailsEx -Mode Video -Dir $Locations[2] -Log $EmailTxt[2] -R -LC -LA}
+function Get-Video{
+.\Export-MediaFileDetailsEx -Mode Video -Dir $Locations[2] -R -LC -LA -Log $EmailTxt[2]}
 
-function Get-All
-	{
-	$ShowStatus = {
-		param([String]$Mode,[Int]$ModeIdx)
+function Get-All{
+$ShowStatus = {
+	param([Int]$ModeIdx)
+	if ($Host.Name -eq 'Windows PowerShell ISE Host'){
 		Clear-Host
-		"Step ($Mode) $ModeIdx of 3 Complete!"
+		"Step ($Modes[$ModeIdx]) $ModeIdx of 3 Complete!"
 		#Flush Memory Variables
 		Get-Variable -Exclude PWD,*Preference|Remove-Variable -EA 0
-		}
-	Get-Audio; Invoke-Command -Scriptblock $ShowStatus -ArgumentList $Modes[1],1
-	Get-Image; Invoke-Command -Scriptblock $ShowStatus -ArgumentList $Modes[2],2
-	Get-Video; Invoke-Command -Scriptblock $ShowStatus -ArgumentList $Modes[3],3
+	}}
+Get-Audio; Invoke-Command -Scriptblock $ShowStatus -ArgumentList 1
+Get-Image; Invoke-Command -Scriptblock $ShowStatus -ArgumentList 2
+Get-Video; Invoke-Command -Scriptblock $ShowStatus -ArgumentList 3
+}
+
+function Get-NetMediaInfo{
+Import-Module -Name .\AES-Email.ps1 -Force
+Import-Module -Name .\Suspend-PowerPlan.ps1 -Force
+$TM = ''
+$DbSw = ''
+if(Test-Exists -Mode File $LogFile){Remove-Item -Path $LogFile}
+Play-Sound -SoundFile 'Authoriz.wav' -Delay 5
+Suspend-PowerPlan -System -Continuous
+$TM = Switch($ModeIdx){
+	0 {Measure-Command -Expression {Get-All}}
+	1 {Measure-Command -Expression {Get-Audio}}
+	2 {Measure-Command -Expression {Get-Image}}
+	3 {Measure-Command -Expression {Get-Video}}
 	}
 
-function Get-NetMediaInfo
-	{
-	Import-Module  -Name .\AES_Email.ps1 -Force
-	$TM=""
-    Play-Sound -SoundFile "\AUTHORIZ.WAV" -Delay 5
-    Suspend-PowerPlan -System
-	Switch($ModeIdx)
-		{
-		0 {$TM=Measure-Command -Expression {Get-All}}
-		1 {$TM=Measure-Command -Expression {Get-Audio}}
-		2 {$TM=Measure-Command -Expression {Get-Image}}
-		3 {$TM=Measure-Command -Expression {Get-Video}}
-		}
-	$TM|Out-File -FilePath $($EmailTxt[2]) -Append
-	"Sending Conformation Email, Please wait ..."| Out-Host
-	Send-Email3 -Subject $EmailTxt[0] -Body $EmailTxt[1] -Att $EmailTxt[2]
-	"Transmission Complete ..."| Out-Host
-	Remove-Item  -Path $($EmailTxt[2])
-    Suspend-PowerPlan #Reset
-    Play-Sound -SoundFile "\ANALYSIS.WAV" -Delay 5
-	if($Reboot.IsPresent){Start-Sleep -Seconds 30;Restart-Computer}
+if($Publish.IsPresent){
+	$DbSw = Switch($ModeIdx){
+	0 {'*'}
+	1 {'A'}
+	2 {'I'}
+	3 {'V'}
+	}
+	if($Quiet.IsPresent){$DbSw = -join ($DbSw,'Q')}
+	$KeyInfo = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msaccess.exe','(Default)')
+	$AccPath = Get-RegistryValue -Key $KeyInfo[0] -Value $KeyInfo[1]
+	$P=Start-Process -FilePath $AccPath -ArgumentList (([IO.Path]::GetFullPath($ExportFile[0])," /runtime /Cmd $DbSw")) -NoNewWindow -PassThru
+	Do{<#Do Nothing#>} Until($P.HasExited -eq $True)
+	Export-Files
 	}
 
-	#Execute Main Function
-	Get-NetMediaInfo
+$TM|Out-File -FilePath $($EmailTxt[2]) -Append
+if(Test-InternetConnection){
+	if(Test-Exists -Mode File '.\AES.key'){
+		Play-Sound -SoundFile 'TOS_Bosun_Whistle_1.wav'
+		'Sending Confirmation Email, Please wait ...'| Out-Host
+		Send-Email3 -Subject $EmailTxt[0] -Body $EmailTxt[1] -Att $EmailTxt[2]
+		'Transmission Complete ...'| Out-Host
+		Remove-Item  -Path $($EmailTxt[2])}
+}
+Suspend-PowerPlan #Reset
+Play-Sound -SoundFile 'Analysis.wav' -Delay 5
+if($Reboot.IsPresent){
+	Play-Sound -SoundFile 'AutoShut.wav'
+	Start-Sleep -Seconds 30
+	Restart-Computer}
+}
+
+#Execute Main Function
+Get-NetMediaInfo
