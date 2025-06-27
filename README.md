@@ -9,7 +9,7 @@ This repository includes a collection of Powershell Utilities and Scripts many o
 as reusable modules via the Import-Module command in building more complex scripts. One such script is
 the 'WinFormsLibrary.ps1' which includes functions for many common Windows WinForm dialogs.
 
-The repository contains folders for each application and a ZipFiles folder as a library of the projects.
+The repository contains folders for each application.
 
 I've also included both a 32-bit & 64-bit version of my PSRun3 Windows Powershell Host application, which provides a means of running Windows Powershell sceipts without a console window. For command syntax run: 
 PSRun3.exe -help
@@ -69,11 +69,15 @@ PSRun3.exe -help
 
  [Export-MediaFileDetailsEx Cmdlet Group](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Export-MediaFileDetailsEx)
  | Filename     | Description  |
- | ------------ | ------------ |                             
+ | ------------ | ------------ | 
+ | AES-Email.ps1 | AES Email Function Library |
+ | Exists.ps1 | .Net Directory/File existance test function |                           
  | Export-MediaFileDetailsEx.ps1 | Cmdlet for Export of Media File Extended Properties |
  | Get-NetMediaInfo.ps1 | Gets Network Media File Extended Properties (requires configration changes)
  | MetadataIndexLib.ps1 | MetaData Index Access Functions |
  | ScriptPathInfo.ps1 | Script Information Library |
+ | Suspend-PowerPlan.ps1 | Function Library to Suspend the system Power Plan for long running Tasks |
+ | Test-InternetConnection.ps1 | Function Library to Test for a live internet connection |
 
  [MovieLauncher Application](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/MovieLauncher)
  | Filename     | Description  |
@@ -124,17 +128,7 @@ PSRun3.exe -help
  |[Show-DynamicMenu Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-DynamicMenu)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
- | Show-DynamicMenu.ps1 | Cmdlet\Library to display a Dynamic Menu |
-                  
- [ZipFiles](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/ZipFiles)
- | Filename     | Description  |
- | ------------ | ------------ |                                               
- | AudioPlayer.zip | AudioPlayer Modules |
- | Create-PSListingGUI.zip | Powershell Script Listing Modules |
- | Export-MediaFileDetailsEx.zip | Export-MediaFileDetailsEx Cmdlet
- | MovieLauncherV8.zip | MovieLauncher Modules |
- | Show-ColorPicker.zip | ColorPicker Modules |
-
+ | Show-DynamicMenu.ps1 | Cmdlet\Library to display a Dynamic Menu |                 
 
 
 
