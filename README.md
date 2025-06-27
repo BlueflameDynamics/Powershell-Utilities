@@ -70,7 +70,7 @@ PSRun3.exe -help
  [Export-MediaFileDetailsEx Cmdlet Group](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Export-MediaFileDetailsEx)
  | Filename     | Description  |
  | ------------ | ------------ | 
- | AES-Email.ps1 | AES Email Function Library |
+ | AES-Email.ps1 | AES Email Function Library (requires configration changes) |
  | Exists.ps1 | .Net Directory/File existance test function |                           
  | Export-MediaFileDetailsEx.ps1 | Cmdlet for Export of Media File Extended Properties |
  | Get-NetMediaInfo.ps1 | Gets Network Media File Extended Properties (requires configration changes)
