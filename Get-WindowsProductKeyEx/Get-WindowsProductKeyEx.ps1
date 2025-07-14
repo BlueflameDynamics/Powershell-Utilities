@@ -16,8 +16,8 @@
 	the Windows Update History from the Registry. Note: Windows Update does not
 	always update: ProductName & ReleaseId in Registry. Where the Registry based values may
 	be vwrong the Common Information Model (CIM) property values are reported.
-	The Update History is shown as a table. This scripy includes functions for viewing the
-	CIM properties and the Windows NT CurrentVersion Registry properties for those intrested.
+	The Update History is shown as a table. This script includes functions for viewing the
+	CIM properties and the Windows NT CurrentVersion Registry properties for those interested.
 	
 	----------------------------------------------------------------------------------------
 	Security Note: This is an unsigned script, Powershell security may require you run the
