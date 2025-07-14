@@ -79,6 +79,10 @@ PSRun3.exe -help
  | Suspend-PowerPlan.ps1 | Function Library to Suspend the system Power Plan for long running Tasks |
  | Test-InternetConnection.ps1 | Function Library to Test for a live internet connection |
 
+[Get-WindowsProductKeyEx](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Get-WindowsProductKeyEx)
+ | Filename     | Description  |
+ | ------------ | ------------ | 
+ | Get-WindowsProductKeyEx.ps1 | Gets Current Windows Version Info (Includes Product ID & Key) & Update History |
  [MovieLauncher Application](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/MovieLauncher)
  | Filename     | Description  |
  | ------------ | ------------ |                                          
