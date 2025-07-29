@@ -2,11 +2,13 @@
 .NOTES
 -------------------------------------
 Name:	MovieLauncher.ps1
-Version: 8.0h - 07/18/2020
+Version: 8.0j - 07/29/2025
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
 Revision History:
+v8.0j - 07/29/2025 - Replaced custom PropertySheet with Windows PropertySheet (Simplified Code)
+v8.0i - 07/15/2024 - Made -AsJob optional for retrieving properties.
 v8.0h - 07/18/2020 - Added changes for Powershell Core
 v8.0g - 02/17/2019 - Added support for High Res icons
 v8.0b - 03/15/2017 - Added MetadataIndexLib for Windows version indepentence
@@ -96,13 +98,14 @@ Import-Module -Name .\GetSplitPathLib.ps1 -Force
 Import-Module -Name .\Invoke-CopyFile.ps1 -Force
 Import-Module -Name .\ListviewSearchLib.ps1 -Force
 Import-Module -Name .\MetadataIndexLib.ps1 -Force
+Import-Module -Name .\PropertySheetDialog.ps1 -Force
 Import-Module -Name .\UtilitiesLib.ps1 -Force
 Import-Module -Name .\WinFormsLibrary.ps1 -Force
 #endregion
 
 #region Script Level Variables
 $AbEnd	= $False
-$App = [PSCustomObject][Ordered]@{Name = 'PS Movie Launcher';Vers = 'Version: 8.0h - 07/18/2020'}
+$App = [PSCustomObject][Ordered]@{Name = 'PS Movie Launcher';Vers = 'Version: 8.0j - 07/29/2025'}
 $ValidViews = @('LargeIcon','List')
 [int]$View = [Array]::IndexOf($ValidViews,$View)
 #endregion
@@ -116,7 +119,8 @@ function Get-DownLoadTarget{
 function Get-FileDetails{
 	param(
 		[Parameter(Mandatory)][Alias('P')][String]$Path,
-		[Parameter(Mandatory)][Alias('D')][Bool]$IsDir)
+		[Parameter(Mandatory)][Alias('D')][Bool]$IsDir,
+		[Parameter()][Alias('J')][Switch]$AsJob)
 
 	$ShellJob = `
 		{
@@ -173,11 +177,14 @@ function Get-FileDetails{
 	$Folder = Split-Path -Path $path
 	$File = Split-Path -Path $path -Leaf
 	$Form1.Cursor = Get-Cursor -Mode WaitCursor
-	$RV = Start-Job `
-			-Name 'MovieLauncherJob' `
-			-ScriptBlock $ShellJob `
-			-ArgumentList $Folder,$File,$PadSize,$PropDescs,$SelectedProps| `
-		  Receive-Job -Wait -AutoRemoveJob
+	If($AsJob.IsPresent){
+		$RV = Start-Job `
+				-Name 'MovieLauncherJob' `
+				-ScriptBlock $ShellJob `
+				-ArgumentList $Folder,$File,$PadSize,$PropDescs,$SelectedProps| `
+			  Receive-Job -Wait -AutoRemoveJob
+	}
+	Else{$RV = Invoke-Command -ScriptBlock $ShellJob -ArgumentList $Folder,$File,$PadSize,$PropDescs,$SelectedProps}
 	$Form1.Cursor = Get-Cursor -Mode Default
 	return $RV
 }
@@ -237,64 +244,6 @@ function Set-ListViewItem{
 	$Control.Items[$counter[$Index]].Name = $Stream.FullName
 	$counter[$Index]++
 	$Script:LvwUpdated = $True
-}
-
-function Show-PropertySheet{
-	param(
-		[Parameter(Mandatory)][String]$TargetFile,
-		[Parameter(Mandatory)][Bool]$IsDir)
-
-	Add-Type -A System.Windows.Forms
-	$Form1.Cursor = Get-Cursor -Mode WaitCursor
-	#Add objects for About
-	$frmProps = New-Object -TypeName Windows.Forms.Form
-	$rtbProps = New-Object -TypeName Windows.Forms.RichTextBox
-	$InitialFormWindowState = New-Object -TypeName Windows.Forms.FormWindowState
-
-	#Form
-	$frmProps.Name = 'FormProperties'
-	$frmProps.AutoScroll = $True
-	$frmProps.ClientSize = New-Object -TypeName Drawing.Size -ArgumentList 855,525
-	$frmProps.DataBindings.DefaultDataSourceUpdateMode = 0
-	$frmProps.FormBorderStyle = [Windows.Forms.FormBorderStyle]::FixedSingle 
-	$frmProps.StartPosition = [Windows.Forms.FormStartPosition]::CenterParent
-	$frmProps.ShowInTaskbar = $False
-	$frmProps.Text = -join $App.Name,' - Properties'
-	$frmProps.Icon = [BlueflameDynamics.IconTools]::ExtractIcon($DLL,[Array]::IndexOf($IconCatalog[0],'Properties'),16)
-	$frmProps.MaximizeBox = `
-	$frmProps.MinimizeBox = $False
-
-	#Rich Textbox
-	$rtbProps.Name = 'rtbProps'
-	$rtbProps.Anchor = Get-Anchor -T -L -B -R
-	$rtbProps.BackColor = [Drawing.Color]::FromArgb(255, 240, 240, 240)
-	$rtbProps.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D 
-	$rtbProps.DataBindings.DefaultDataSourceUpdateMode = 0
-	$rtbProps.Location = New-Object -TypeName Drawing.Point -ArgumentList 13,13
-	$rtbProps.ReadOnly = $True
-	$rtbProps.DetectURLs = $False
-	$rtbProps.Cursor = Get-Cursor -Mode Default
-	$rtbProps.Size = New-Object -TypeName Drawing.Size -ArgumentList $($frmProps.Width - 30),$($frmProps.Height * .82)
-	$rtbProps.TabIndex = 0
-	$rtbProps.TabStop = $False
-	$rtbProps.Font = New-Object -TypeName Drawing.Font -ArgumentList 'Lucida Console',12,(Get-SelectedFontStyle -FS Regular)
-	$rtbProps.Text = Get-FileDetails -Path $TargetFile -IsDir $IsDir
-	$frmProps.Controls.Add($rtbProps)
-
-	#Exit Button
-	$BtnExit = New-Object -TypeName Windows.Forms.Button
-	$BtnExit.Name = 'BtnExit'
-	$BtnExit.Anchor = Get-Anchor -T -L -B -R
-	$BtnExit.Size = New-Object -TypeName Drawing.Size -ArgumentList 80,30
-	$BtnExitLeft = $rtbProps.Right - ($BtnExit.Width+10)
-	$BtnExit.Location = New-Object -TypeName Drawing.Point -ArgumentList $BtnExitLeft,$($frmProps.Height * .86)
-	$BtnExit.Text = 'Exit'
-	$BtnExit.UseVisualStyleBackColor = $True
-	$BtnExit.Add_Click({$frmProps.Close()})
-	$frmProps.Controls.Add($BtnExit)
-	$Form1.Cursor = Get-Cursor -Mode Default
-
-	[Void]$frmProps.ShowDialog()
 }
 
 function Refresh-ListView{
@@ -501,8 +450,7 @@ function Show-MainForm{
 	$Properties_Click = {
 		if($ListView[0].SelectedItems[0].Count -gt 0)
 			{
-			Show-PropertySheet -TargetFile $ListView[0].SelectedItems[0].Name`
-							   -IsDir ($ListView[0].SelectedItems[0].Tag -eq $IconCatalogItems[0].Tag)
+			Show-PropertySheetDialog -TargetPath $ListView[0].SelectedItems[0].Name
 			}
 		else
 			{Show-MessageBox -M 'No Item Selected!' -T $Form1.Text -B OK -Icon Warning}
@@ -667,3 +615,6 @@ function Show-MainForm{
 
 #Call the Main function
 if($AbEnd -ne $True) {Show-MainForm}
+<#
+.\MovieLauncher.ps1 -Directory '\\MyCloud1\Public\Shared Videos\Movies'
+#>
