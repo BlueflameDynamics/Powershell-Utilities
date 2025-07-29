@@ -98,6 +98,7 @@ PSRun3.exe -help
  | Movie Launcher.lnk | Sample Windows Shortcut File |
  | MovieLauncher.ps1 | Main Movie Launcher Cmdlet |
  | Music Videos.lnk | Sample Windows Shortcut File |
+ | PropertySheetDialog.ps1 | Functions to invoke Property Sheet Dialog |
  | PSMovieLauncherIcons.dll | Icon Library |
  | PSRun3.exe | 32-bit Powershell Host | 
  | PSRun3X64.exe | 64-bit Powershell Host |  
