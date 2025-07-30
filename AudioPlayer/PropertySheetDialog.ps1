@@ -2,7 +2,7 @@
 .NOTES
 -------------------------------------
 Name:	PropertySheetDialog.ps1
-Version: 1.0 - 04/04/2025
+Version: 1.1 - 07/29/2025
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
@@ -28,7 +28,7 @@ param([Parameter(Mandatory)][Alias('P')][String]$TargetPath)
 
 	#region Function Level Variables
 	# $ShellObj is a custom object of Shell.Application & control values
-    $ShellObj = [PSCustomObject][Ordered]@{
+	$ShellObj = [PSCustomObject][Ordered]@{
 		Path   = ''
 		Folder = ''
 		File   = ''
@@ -36,12 +36,16 @@ param([Parameter(Mandatory)][Alias('P')][String]$TargetPath)
 		ShellFolder = $Null
 		ShellFile   = $Null
 	}
+	$IsContainer = Test-Path -Path $TargetPath -PathType Container
 	#endregion
 
 	#region Create Windows Shell Object
 	$ShellObj.Path = $TargetPath
 	$ShellObj.Shell = New-Object -COMObject Shell.Application
-	$ShellObj.Folder = Split-Path -Path $ShellObj.Path
+	if ($IsContainer) {
+		$ShellObj.Folder = $ShellObj.Path}
+	else{
+		$ShellObj.Folder = Split-Path -Path $ShellObj.Path}
 	$ShellObj.File = Split-Path -Path $ShellObj.Path -Leaf
 	$ShellObj.ShellFolder = $ShellObj.Shell.Namespace($ShellObj.Folder)
 	$ShellObj.ShellFile = $ShellObj.ShellFolder.ParseName($ShellObj.File)
@@ -49,7 +53,7 @@ param([Parameter(Mandatory)][Alias('P')][String]$TargetPath)
 
 	#region Display approiate Property Sheet
 	$Verb = "Properties"
-	if (Test-Path -Path $TargetPath -PathType Container) {
+	if ($IsContainer) {
 		<# Folder #>	$ShellObj.ShellFolder.Self.InvokeVerb($Verb)
 	} else {
 		<# File #>		$ShellObj.ShellFile.InvokeVerb($Verb)
@@ -57,7 +61,7 @@ param([Parameter(Mandatory)][Alias('P')][String]$TargetPath)
 	#endregion
 
 	#region Clean-up Com objects
-	$Null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($ShellObj.ShellFile)
+	if(!$IsContainer){$Null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($ShellObj.ShellFile)}
 	$Null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($ShellObj.ShellFolder)
 	$Null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($ShellObj.Shell)
 	$ShellObj = $Null
