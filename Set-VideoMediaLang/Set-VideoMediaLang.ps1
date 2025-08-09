@@ -1,21 +1,22 @@
 <#
 .NOTES
 	File Name:	Set-VideoMediaLang.ps1
-	Version:	Version: 1.1 - 2025/08/07
+	Version:	Version: 1.3 - 2025/08/09
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	2025/06/20
 	Revision History:
-		V1.2 - 2025/08/09 - Added Video Language Dictionary json
+		V1.3 - 2025/08/09 - Added ability to set target audio track#
+		V1.2 - 2025/08/08 - Added Video Language Dictionary json
 		V1.1 - 2025/08/07 - Added redirection support
 	 	V1.0 - 2025/06/20 - Original Wersion
 
 .SYNOPSIS
-	This script uses FFmpeg to easily set the first audio track language of a supported video file(s)
+	This script uses FFmpeg to easily set an audio track language of a supported video file(s)
 	without rerendering.
 
 .DESCRIPTION
-	This script uses FFmpeg to easily set the first audio track language of a supported video file(s)
+	This script uses FFmpeg to easily set an audio track language of a supported video file(s)
 	without rerendering. Input filenames may be input via the pipeline. The resulting output files
 	are named the same as the input, but are directed to another directory. The output directory
 	will be created, if necessary. Any existing output files in the output directory are
@@ -45,6 +46,9 @@ assuming PowerShell security is set to RemoteSigned.
 	See: https://www.loc.gov/standards/iso639-2/php/code_list.php
 	A ISO639-2_Video_Language_Codes.json was added in v1.2
 
+.PARAMETER AudioTrack Alias: AT (Default is 0)
+	Optional, Zero-based audio track# to modify.
+
 .PARAMETER FullLog Alias: FL
 	Optional, Thi switch will cause full FFmpeg logging to be shown.
 
@@ -63,15 +67,20 @@ assuming PowerShell security is set to RemoteSigned.
 	PS> (GCI -Path f:\SuperCar-1961\*.mkv)|.\Set-VideoMediaLang.ps1 
 	This command uses the pipeline to pass a list of input files and directs output to a "New" subfolder.
 	Only limited status information is displayed, unless an FFmpeg error is detected.
-.EXAMPLE
+	Optional,
 	PS> (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -FullLog|Out-File Set-VideoMediaLang.log
 	This command uses the pipeline to pass a list of input files and directs that the full FFmpeg log be saved to a text file.
+
+.EXAMPLE
+	PS> .\Set-VideoMediaLang.ps1 -FN f:\Video\Around_the_World_in_80_Days_HD.mp4 -AL fre -AT 1
+	This example would set the second audio track language to French.
 #>
 [CmdletBinding()]
 Param(
 	[Parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName,HelpMessage='Fully Qualified Input File Name')][Alias('FN')][String]$FullName,
 	[Parameter(HelpMessage='The output target directory')][Alias('PO')][String]$PathOut='',
 	[Parameter(HelpMessage='The output target language code')][Alias('AL')][String]$LanguageID = 'eng',
+	[Parameter(HelpMessage='The output target language audio track(Zero Based)')][Alias('AT')][Int]$AudioTrack = 0,
 	[Parameter()][Alias('FL')][Switch]$FullLog
 	)
 
@@ -94,7 +103,7 @@ Param([Parameter(Mandatory)][Alias('VDF')][String]$VideoDictionaryFile)
 	$VideoLanguageIdDictionary = Import-VideoLanguageIdDictionary -VDF .\ISO639-2_Video_Language_Codes.json
 	if(!$FullLog){
 		'Processing ...'
-		'Target Language Code: {0} Language: {1}' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID]
+		'Target Language Code: {0} Language: {1} Track#' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID],$AudioTrack
 #endregion
 	}
 }
@@ -102,10 +111,12 @@ Process{
 #region Utility Functions
 Function Run-FFmpeg(){
 	$Prefix = '-hide_banner -loglevel error '
-	$StdArgs = '{0} "{1}" {2}{3} "{4}"' -f 
+	$StdArgs = '{0} "{1}" {2}{3} {4}{5} "{6}"' -f 
 		'-y -i',
 		$FI.FullName,
-		'-map 0 -c:a copy -c:v copy -metadata:s:a:0 language=',
+		'-map 0 -c:a copy -c:v copy -metadata:s:a:',
+		$AudioTrack, 
+		'language=',
 		$LanguageID,
 		$(Join-Path -Path $PathOut -ChildPath $FI.Name)
 	$ArgList = if(!$FullLog){$Prefix+$StdArgs}else{$StdArgs}
