@@ -118,7 +118,13 @@ PSRun3.exe -help
  | Filename     | Description  |
  | ------------ | ------------ |                                  
  | Set-OpticalDriveState.ps1 | Cmdlet to set\get Optical Drive State |
-        
+
+  [Set-VideoMediaLang Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Set-VideoMediaLang)
+ | Filename     | Description  |
+ | ------------ | ------------ |                                  
+ | ISO639-2_Video_Language_Codes.json | Language Code Dictionary |
+ | Set-VideoMediaLang.ps1 | Cmdlet to set the first audio track language via FFmpeg |
+
  [Show-ColorPicker\Get-ColorInfo Cmdlets](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Show-ColorPicker)
  | Filename     | Description  |
  | ------------ | ------------ |                                       
