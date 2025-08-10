@@ -24,6 +24,7 @@
 	the default is 'eng' (English). FFmpeg logging is restricted to errors only by default
 	and the filename of each processed file is shown instead. You may display full FFmpeg
 	logging by use of the -FullLog switch.
+
 ----------------------------------------------------------------------------------------
 Security Note: This is an unsigned script, Powershell security may require you run the
 Unblock-File cmdlet with the Fully qualified filename before you can run this script,
@@ -36,7 +37,7 @@ assuming PowerShell security is set to RemoteSigned.
 
 .PARAMETER FullName Alias: FN
 	Requried, The fully qualified filename of the input file.
-	
+
 .PARAMETER PathOut Alias: PO
 	Optional, The fully qualified output directory path.
 	defaults to a 'New' directory below the input directory.
@@ -80,7 +81,7 @@ Param(
 	[Parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName,HelpMessage='Fully Qualified Input File Name')][Alias('FN')][String]$FullName,
 	[Parameter(HelpMessage='The output target directory')][Alias('PO')][String]$PathOut='',
 	[Parameter(HelpMessage='The output target language code')][Alias('AL')][String]$LanguageID = 'eng',
-	[Parameter(HelpMessage='The output target language audio track(Zero Based)')][Alias('AT')][Int]$AudioTrack = 0,
+	[Parameter(HelpMessage='The output target audio track(Zero Based)')][Alias('AT')][Int]$AudioTrack = 0,
 	[Parameter()][Alias('FL')][Switch]$FullLog
 	)
 
@@ -88,14 +89,11 @@ Begin{
 #region Variables
 $Locked = $False
 $LanguageID = $LanguageID.ToLower()
-$VideoLanguageIdDictionary = $Null
-#endregion
 #region Utility Functions
 Function Import-VideoLanguageIdDictionary{
 Param([Parameter(Mandatory)][Alias('VDF')][String]$VideoDictionaryFile)
 	$CodeDict = [System.Collections.Generic.Dictionary[String,String]]::New()
-	$jsonData = Get-Content -Path $VideoDictionaryFile | ConvertFrom-Json
-	$jsonData|ForEach-Object{$CodeDict.Add($_.Code,$_.Name)}
+	(Get-Content -Path $VideoDictionaryFile | ConvertFrom-Json) | ForEach-Object{$CodeDict.Add($_.Code,$_.Name)}
 	$CodeDict
 }
 #endregion
@@ -103,9 +101,9 @@ Param([Parameter(Mandatory)][Alias('VDF')][String]$VideoDictionaryFile)
 	$VideoLanguageIdDictionary = Import-VideoLanguageIdDictionary -VDF .\ISO639-2_Video_Language_Codes.json
 	if(!$FullLog){
 		'Processing ...'
-		'Target Language Code: {0} Language: {1} Track#' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID],$AudioTrack
-#endregion
+		'Target Language Code: {0} Language: {1} Track#: {2}' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID],$AudioTrack
 	}
+#endregion
 }
 Process{
 #region Utility Functions
