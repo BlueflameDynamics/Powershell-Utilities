@@ -1,13 +1,14 @@
 <#
 .NOTES
 	File Name:	Create-PSListing.ps1
-	Version:	2.0 - 03/25/2024
+	Version:	2.1 - 11/20/2025
 	Requires:	Powershell V5+
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	03/08/2016
 	Based Upon: Copy-ToPrinter.ps1 by Karl Mitschke
 	Revision History:
+		v2.1 - 11/20/2025 - Added Token Report Sort Options
 		V2.0 - 03/25/2024 - Merged in Create-TokenReport.ps1 V1.0 functions
 		V1.9 - 02/01/2022 - Added Support for VS Code Editor like that of the ISE
 		V1.8 - 01/24/2022 - Added Validate-ScriptType to simplify code
@@ -111,6 +112,8 @@ param(
 		[ValidateRange(10,100)][UInt32]$MaxContentLength = 50,
 	[Parameter(HelpMessage = 'Token Report Include Comment Type?')][Alias('ICT')][Switch]$ShowComments,	
 	[Parameter(HelpMessage = 'Token Report Include Start Property?')][Alias('SS')][Switch]$ShowStart,
+	[Parameter(HelpMessage = 'Token Report Sort By Type?')][Alias('SBT')][Switch]$SortByType,
+	[Parameter(HelpMessage = 'Token Report Sort By Content?')][Alias('SBC')][Switch]$SortByContent,
 	[Parameter(HelpMessage = 'Opens output file in default web browser')][Alias('O')]
 		[switch]$OpenInWebBrowser,
 	[Parameter(HelpMessage = 'When Used with -OpenInWebBrowser Outputs file to Temp Directtory')][Alias('T')]
@@ -436,32 +439,58 @@ function Set-OutputFileName{
 }
 
 function Build-TokenList{
-	if($My.OutputIdx -ne [TokenReportOutput]::Raw){
-		#Filter to Selected PsToken Types
-		$TokenTypes = @('Command','CommandArgument','CommandParameter','Member','Type','Unknown','Variable')
-		if($ShowComments.IsPresent){$TokenTypes += 'Comment';[Array]::Sort($TokenTypes)}
-		$Tokens = $RawTokens|Where-Object{($TokenTypes.Contains($_.Type.ToString()))}
+    param(
+        [switch]$ShowComments,
+        [switch]$ShowStart,
+        [switch]$SortByType,    # New parameter to control sort order
+        [switch]$SortByContent  # New parameter to control sort order
+    )
 
-		#Build Custom Output Objects & Sort
-		$Script:Tokens = $Tokens|ForEach-Object{
-			$NewObj = [PSCustomObject][Ordered]@{
-				Type = $_.Type.ToString() 
-				Content = $(
-					if($_.Type -eq 'Comment'){
-						$_.Content.Substring(0,$(
-						if($_.Content.Length -gt $MaxContentLength){$MaxContentLength}
-						else{$_.Content.Length-1}))}
-					else{$_.Content})
-				StartLine = $_.StartLine
-				StartColumn = $_.StartColumn
-				EndLine = $_.EndLine
-				EndColumn = $_.EndColumn
-				Length = $_.Length}
-			if($ShowStart.IsPresent){
-				Add-Member -InputObject $NewObj -MemberType NoteProperty -Name 'Start' -Value $_.Start}
-			return $NewObj}|Sort-Object -Property Type,Content,Startline
-	}
+    if ($My.OutputIdx -ne [TokenReportOutput]::Raw) {
+        #Filter to Selected PsToken Types
+        $TokenTypes = @('Command','CommandArgument','CommandParameter','Member','Type','Unknown','Variable')
+        if ($ShowComments.IsPresent) { 
+            $TokenTypes += 'Comment'
+            [Array]::Sort($TokenTypes) 
+        }
+
+        $Tokens = $RawTokens | Where-Object { $_.Type.ToString() -in $TokenTypes }
+
+        #Build Custom Output Objects & Sort
+        $Script:Tokens = $Tokens | ForEach-Object {
+            $content = if ($_.Type -eq 'Comment') {
+                $_.Content.Substring(0, [Math]::Min($_.Content.Length, $MaxContentLength))
+            } else {
+                $_.Content
+            }
+
+            $NewObj = [PSCustomObject][Ordered]@{
+                Type        = $_.Type.ToString()
+                Content     = $content
+                StartLine   = $_.StartLine
+                StartColumn = $_.StartColumn
+                EndLine     = $_.EndLine
+                EndColumn   = $_.EndColumn
+                Length      = $_.Length
+            }
+
+            if ($ShowStart.IsPresent) {
+                Add-Member -InputObject $NewObj -MemberType NoteProperty -Name 'Start' -Value $_.Start
+            }
+
+            $NewObj
+        } | Sort-Object @(
+            if ($SortByType.IsPresent) { 'Type' }
+            if ($SortByContent.IsPresent) { 'Content' }
+            'StartLine'
+            'StartColumn'
+        )
+
+        return $Script:Tokens
+    }
 }
+
+
 
 function Write-ToFile{
 	$Tokens|Format-Table -AutoSize | Out-File -Filepath ($OutName)
@@ -497,7 +526,7 @@ function Create-TokenReport{
 	$Script:Text = $Text|Expand-Tabs -Tw $TabWidth
 	#Tokenize Input Script
 	$Script:RawTokens = [System.Management.Automation.PsParser]::Tokenize($Text, [Ref] $Null)
-	Build-TokenList
+	Build-TokenList -SortByContent:$SortByContent -SortByType:$SortByType
 	if($My.ModeIdx -ne [ModeOfOperation]::Both){Set-OutputFileName}
 	Write-TokenResults
 }
@@ -515,6 +544,6 @@ Switch($My.ModeIdx){
 <#
 .\Create-PSListing.ps1 -Mode Listing -LW 3 -Out Html -ICT -SS -T -O
 .\Create-PSListing.ps1 -Mode Tokens -Out Html -ICT -SS -T -O
-.\Create-PSListing.ps1 -Mode Both -LW 3 -Out Html -ICT -SS -T -O 
+.\Create-PSListing.ps1 -Mode Both -LW 3 -Out Html -ICT -SS -T -O -SBC -SBT
 #>
 #endregion

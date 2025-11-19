@@ -1,11 +1,12 @@
 <#
 .NOTES
 	File Name:	Create-PSListingGUI.ps1
-	Version:	1.0 - 03/14/2024
+	Version:	1.1 - 11/18/2025
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	03/14/2024
 	History:
+		V1.1 - 11/18/2025 - Added Sort Options
 		V1.0 - 03/14/2024 - Original Release
 
 .SYNOPSIS
@@ -157,19 +158,38 @@ Remove-Variable -Name P,V
 #endregion
 #region Utility Functions
 Function Export-Settings{
-	param(
-		[Parameter(Mandatory)][PSTypeName('My.DialogResult')]$DR,
-		[Parameter(Mandatory)][String]$File)	
-	if($DR.Diagnostics){Exit}
-	$DR.PSObject.Properties.Remove('SaveOnExit')
-	$DR.PSObject.Properties.Remove('Diagnostics')
-	$DR.PSObject.Properties.Remove('SelectedFile')
-	($DR.PSObject.Properties.Item('TokenReport').Value).PSObject.Properties.Remove('TokenReportOnly')
-	$NewType = 'My.Settings'
-	$DR.PSTypeNames.RemoveAt(0)
-	$DR.PSTypeNames.Insert(0,$NewType)
-	Add-Member -InputObject $DR -MemberType NoteProperty -Name TypeName -Value $NewType
-	$DR|ConvertTo-Json -Depth $DR.JsonDepth|Set-Content -Path $File
+    param(
+        [Parameter(Mandatory)][PSTypeName('My.DialogResult')]$DR,
+        [Parameter(Mandatory)][string]$File)
+    if ($DR.Diagnostics) { return }
+    #Remove Properties Excluded from Export
+    foreach ($prop in 'SaveOnExit','Diagnostics','SelectedFile'){
+        if ($DR.PSObject.Properties.Match($prop)) {$DR.PSObject.Properties.Remove($prop)}
+    }
+
+    if ($DR.PSObject.Properties.Match('TokenReport')) {
+        $tokenReport = $DR.TokenReport
+        if ($tokenReport -and $tokenReport.PSObject.Properties.Match('TokenReportOnly')) {
+            $tokenReport.PSObject.Properties.Remove('TokenReportOnly')
+        }
+    }
+
+    #Set Object TypeName
+    $newType = 'My.Settings'
+    if ($DR.PSTypeNames.Count -gt 0) {
+        $DR.PSTypeNames[0] = $newType
+    } else {
+        $DR.PSTypeNames.Insert(0,$newType)
+    }
+
+    Add-Member -InputObject $DR -MemberType NoteProperty -Name TypeName -Value $newType -Force
+
+    #Export to JSON
+    try {
+        $DR | ConvertTo-Json -Depth $DR.JsonDepth | Set-Content -Path $File -ErrorAction Stop
+    } catch {
+        Write-Error "Failed to export settings: $_"
+    }
 }
 Function Import-Settings{
 	param([Parameter(Mandatory)][String]$File)
@@ -195,7 +215,7 @@ Class Settings{
 	Settings(){
 		$This.GroupBox.Name = 'GrpSettings'
 		$This.GroupBox.Text = 'Settings'
-		$This.GroupBox.Size = [Drawing.Size]::New(203,180)
+		$This.GroupBox.Size = [Drawing.Size]::New(203,190)
 		$This.GroupBox.Location = [Drawing.Point]::New(10,3)
 		$This.GroupBox.Controls.AddRange($This.Labels)
 		$This.GroupBox.Controls.AddRange($This.NumUpDowns)
@@ -306,7 +326,7 @@ Class Options{
 	}
 }
 Class TokenRpt{
-	$ChkBxText = @('Token Report Only','Include Comment Type','Include Start Property')
+	$ChkBxText = @('Token Report Only','Include Comment Type','Include Start Property','Sort By Type','Sort By Content')
 	$RBText = @('File','GridView','Host','Html','Raw')
 	$GroupBox = [Windows.Forms.GroupBox]::New()
 	$Label = [Windows.Forms.Label]::New()
@@ -318,7 +338,7 @@ Class TokenRpt{
 		#region GroupBox
 		$This.GroupBox.Name = 'GrpTokenRpt'
 		$This.GroupBox.Text = 'Token Report Options'
-		$This.GroupBox.Size = [Drawing.Size]::New(314,135)
+		$This.GroupBox.Size = [Drawing.Size]::New(314,145)
 		$This.GroupBox.Location = [Drawing.Point]::New(219,48)
 		$This.GroupBox.Enabled = `
 		$This.GroupBox.TabStop = $False
@@ -330,15 +350,16 @@ Class TokenRpt{
 		#region Labels
 		$This.Label.Name = 'LblMaxCommentLength'
 		$This.Label.Text = 'Max Comment Length:'
-		$This.Label.Size = [Drawing.Size]::New(137,23)
-		$This.Label.Location = [Drawing.Point]::New(101,85)
+		$This.Label.Size = [Drawing.Size]::New(137,20)
+		$This.Label.Location = [Drawing.Point]::New(101,($This.ChkBxText.Count * 23) + 8)
 		#endregion  
  		#region NumUpDowns
  		$This.MaxCommentLength.Name = 'MaxCommentLength'
   		$This.MaxCommentLength.Size  = [Drawing.Size]::New(50,23)
-		$This.MaxCommentLength.Location = [Drawing.Point]::New(244,82)
+		$This.MaxCommentLength.Location = [Drawing.Point]::New(244,($This.ChkBxText.Count * 23) + 5)
 		$This.MaxCommentLength.Maximum = 100
 		$This.MaxCommentLength.Minimum = 10
+		$This.MaxCommentLength.Increment = 1
 		$This.MaxCommentLength.Value = 50
 		$This.MaxCommentLength.TabStop = $True
 		$This.MaxCommentLength.TabIndex = 19
@@ -361,7 +382,7 @@ Class TokenRpt{
 		$This.RadioButtons[[TokenReportOutput]::File].Checked = $True
 		#endregion
 		#region Checkboxes
-		$C = 0; $Y = 23; #$T = 17
+		$C = 0; $Y = 20; #$T = 17
 		ForEach($CB in $This.CheckBoxes){
 			$CB.Name = 'Chk'+$This.ChkBxText[$C].Replace(' ','')
 			$CB.Text = $This.ChkBxText[$C]
@@ -389,7 +410,7 @@ Class SelectedFile{
 		$This.GroupBox.Name = 'GrpSelectedFile'
 		$This.GroupBox.Text = 'Selected File'
 		$This.GroupBox.Size = [Drawing.Size]::New(524,66)
-		$This.GroupBox.Location = [Drawing.Point]::New(10,182)
+		$This.GroupBox.Location = [Drawing.Point]::New(10,192)
 		$This.GroupBox.Controls.Add($This.Label)
 		$This.GroupBox.Controls.Add($This.TextBox)
 		$This.GroupBox.Controls.Add($This.Button)
@@ -428,7 +449,7 @@ Class MainForm{
 		#region Form
 		$This.Form.Name = 'FrmMain'
 		$This.Form.Text = $Script:My.Title + ' Dialog'
-		$This.Form.Size = [Drawing.Size]::New(580,345)
+		$This.Form.Size = [Drawing.Size]::New(580,355)
 		$This.Form.FormBorderStyle = [Windows.Forms.FormBorderStyle]::FixedDialog
 		$This.Form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
 		$This.Form.MaximizeBox = `
@@ -437,7 +458,7 @@ Class MainForm{
 		#region Panel 
 		$This.Panel.Name = 'Panel'
 		$This.Panel.Location = [Drawing.Point]::New(8,8)
-		$This.Panel.Size = [Drawing.Size]::New(546,255)
+		$This.Panel.Size = [Drawing.Size]::New(546,265)
 		$This.Panel.BackColor = [Drawing.SystemColors]::ControlDark
 		$This.Form.Controls.Add($This.Panel)
 		#endregion 
@@ -557,6 +578,8 @@ Function Mount-Settings{
 		$GrpSettings.Item('ChkOutputToTemp').Checked = $My.Settings.OutputToTemp
 		$GrpTokenRpt.Item('ChkIncludeCommentType').Checked = $My.Settings.TokenReport.IncludeCommentType
 		$GrpTokenRpt.Item('ChkIncludeStartProperty').Checked = $My.Settings.TokenReport.IncludeStartProperty
+		$GrpTokenRpt.Item('ChkSortByType').Checked = $My.Settings.TokenReport.SortByType
+		$GrpTokenRpt.Item('ChkSortByContent').Checked = $My.Settings.TokenReport.SortByContent
 		$GrpTokenRpt.Item('MaxCommentLength').Value = $My.Settings.TokenReport.MaxCommentLength
 		$GrpTokenRpt.Item('Rdo'+$My.Settings.TokenReport.OutputTo).Checked = $True
 	}
@@ -586,6 +609,8 @@ Function Get-DialogResults{
 			TokenReportOnly = $GrpTokenRpt.Item('ChkTokenReportOnly').Checked
 			IncludeCommentType = $GrpTokenRpt.Item('ChkIncludeCommentType').Checked
 			IncludeStartProperty = $GrpTokenRpt.Item('ChkIncludeStartProperty').Checked
+			SortByType = $GrpTokenRpt.Item('ChkSortByType').Checked
+			SortByContent = $GrpTokenRpt.Item('ChkSortByContent').Checked
 			MaxCommentLength = $GrpTokenRpt.Item('MaxCommentLength').Value
 		}
 		SelectedFile = $GrpSelectedFile.Item('TxtSelectedFile').Text
@@ -627,6 +652,8 @@ if($DR.Diagnostics){
 	-MaxContentLength $DR.TokenReport.MaxCommentLength`
 	-ShowComments:$DR.TokenReport.IncludeCommentType`
 	-ShowStart:$DR.TokenReport.IncludeStartProperty`
+	-SortByType:$DR.TokenReport.SortByType`
+	-SortByContent:$DR.TokenReport.SortByContent`
 	-OutputToTemp:$DR.OutputToTemp`
 	-OpenInWebBrowser:$DR.OpenInWebBrowser
 #endregion

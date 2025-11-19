@@ -12,6 +12,8 @@
                         "OutputTo":  "Html",
                         "IncludeCommentType":  true,
                         "IncludeStartProperty":  true,
+                        "SortByType":  false,
+                        "SortByContent":  true,
                         "MaxCommentLength":  50
                     },
     "TypeName":  "My.Settings"
