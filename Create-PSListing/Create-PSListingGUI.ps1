@@ -449,7 +449,7 @@ Class MainForm{
 		#region Form
 		$This.Form.Name = 'FrmMain'
 		$This.Form.Text = $Script:My.Title + ' Dialog'
-		$This.Form.Size = [Drawing.Size]::New(580,355)
+		$This.Form.Size = [Drawing.Size]::New(568,345)
 		$This.Form.FormBorderStyle = [Windows.Forms.FormBorderStyle]::FixedDialog
 		$This.Form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
 		$This.Form.MaximizeBox = `
