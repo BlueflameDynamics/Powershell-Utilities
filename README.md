@@ -79,6 +79,11 @@ PSRun3.exe -help
  | Suspend-PowerPlan.ps1 | Function Library to Suspend the system Power Plan for long running Tasks |
  | Test-InternetConnection.ps1 | Function Library to Test for a live internet connection |
 
+[Get-VideoChapterInfo.ps1](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Get-VideoChapterInfo)
+ | Filename     | Description  |
+ | ------------ | ------------ | 
+ | Get-VideoChapterInfo.ps1 | Gets Chapter Info from M4V,MP4, & MKV Files using FFProbe.|
+
 [Get-WindowsProductKeyEx](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Get-WindowsProductKeyEx)
  | Filename     | Description  |
  | ------------ | ------------ | 
