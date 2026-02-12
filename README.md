@@ -11,7 +11,7 @@ the 'WinFormsLibrary.ps1' which includes functions for many common Windows WinFo
 
 The repository contains folders for each application.
 
-I've also included both a 32-bit \& 64-bit version of my PSRun3 Windows Powershell Host application, which provides a means of running Windows Powershell sceipts without a console window. For command syntax run:
+I've also included both a 32-bit \& 64-bit version of my PSRun3 Windows Powershell Host application, which provides a means of running Windows Powershell scripts without a console window. For command syntax run:
 PSRun3.exe -help
 
 ## File Catalog:
