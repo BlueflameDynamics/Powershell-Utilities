@@ -2,10 +2,13 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 1.0v - 05/12/2025
+Version: 2.0 - 02/05/2026
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
+Revision History:
+V2.0 - 2026/02/05 - Changed Registry Library
+v1.0 - 2016/04/01 - Original Release
 
 .SYNOPSIS
 This script launches Audio files from a definable location by use of a WinForm & Playlist.
@@ -114,7 +117,8 @@ param(
 #Requires -Version 5
 
 #region Module Import
-Import-Module -Name .\AppRegistry.ps1 -Force
+& {.\AppRegistryTypeAccelerators.ps1}
+Import-Module -Name .\AppRegistryClass.ps1 -Force
 Import-Module -Name .\AudioPlayerEnums.ps1 -Force
 Import-Module -Name .\Class_IconCatalogItem.ps1 -Force
 Import-Module -Name .\Exists.ps1 -Force
@@ -140,7 +144,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 1.0v - 05/12/2025'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.0 - 2026/02/05'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -151,24 +155,30 @@ $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wm
 $LvwColumnWidths = @($IconSize.SmIco,$AutoSize,$AutoSize)
 $HelpFont = @()
 $RegKeys = [Enum]::GetNames([RegistryKey])
-$RegKeys[[RegistryKey]::Default] = '({0})' -f $RegKeys[[RegistryKey]::Default]
+#$RegKeys[[RegistryKey]::Default] = '({0})' -f $RegKeys[[RegistryKey]::Default]
 #endregion
 
-#region Set Application Base Registry Key
-Set-MasterAppName -Name $App.Name #Set Master AppName for Registry Library
-$BaseKey = Get-RegistryProperty -Name $RegKeys[[RegistryKey]::Default]
-if($BaseKey -ne $App.Vers.Substring(9)){
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::Default] -Value $App.Vers.Substring(9) -Type String}
+#region BinaryPairs
+$BP = [ResolveBinaryPairs]::new()
+#endregion
+
+#region Set Application Registry Hive Node
+$ARN = [AppRegistry]::New('Blueflame Dynamics','CurrentUser',$true)
+$ARN.AppName = 'PS Audio Player'
+$ARN.LoadBaseKeys()
+$DefVal = $ARN.ApplicationKey.GetValue([AppRegistry]::DefaultValue)
+if($DefVal -ne $App.Vers.Substring(9)){
+	$ARN.SetValue([AppRegistry]::DefaultValue,$App.Vers.Substring(9),[W32RegKind]::String)}
 #endregion
 
 #region Get LockSettings value from Registry
 # 3 Possible values: $Null(Non-Existent),0(Unlocked),1(Locked)
-$LockSet = Get-RegistryProperty -Name 'LockSettings'
+$LockSet = $ARN.ApplicationKey.GetValue('LockSettings')
 if($Null -eq $LockSet){$LockSet = 0}
 #if $LockSettings set by user set new value
 if($LockSettings.Length -gt 0){
-	$LockSet = ConvertTo-Binary -Value $LockSettings
-	Set-RegistryProperty -Name 'LockSettings' -Value $LockSet -Type Binary}
+	$LockSet = $BP.Resolve($LockSettings)
+	$ARN.SetValue('LockSettings',$LockSet,[W32RegKind]::Binary)}
 #endregion
 
 #region Utility functions
@@ -535,34 +545,20 @@ function Save-Settings{
 		return
 	}
 
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::AutoClose]`
-		-Value $CheckBoxes[[CheckboxID]::AutoClose].Checked -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::AutoPlay]`
-		-Value $AutoPlay.IsPresent -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::HelpRtbFont]`
-		-Value $HelpFont -Type MultiString
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::HideVolumeLock]`
-		-Value $HideLockVolume.IsPresent -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::LockVolume]`
-		-Value $ToolMenuItems[[ToolMenuItem]::LockVolume].Checked -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::LoopPlayback]`
-		-Value $CheckBoxes[[CheckboxID]::Loop].Checked -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::MainFormSize]`
-		-Value @($Form1.Size.Width,$Form1.Size.Height) -Type MultiString
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::MainLvwColumnWidth]`
-		-Value @($ListView1.Columns.Width) -Type MultiString
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::MainLvwFont]`
-		-Value @($ListView1.Font.Name,$ListView1.Font.Size,$ListView1.Font.Style) -Type MultiString
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::Minimized]`
-		-Value $Minimized.IsPresent -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::MiniMode]`
-		-Value $ChkMini.Checked -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::Playlist]`
-		-Value $PlayList -Type String
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::RecurseDirectory]`
-		-Value $CheckBoxes[[CheckboxID]::Recurse].Checked -Type Binary
-	Set-RegistryProperty -Name $RegKeys[[RegistryKey]::Volume]`
-		-Value $Slider.Value -Type DWord
+	$ARN.SetValue($RegKeys[[RegistryKey]::AutoClose],$CheckBoxes[[CheckboxID]::AutoClose].Checked,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::AutoPlay],$AutoPlay.IsPresent,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::HelpRtbFont],$HelpFont,[W32RegKind]::MultiString)
+	$ARN.SetValue($RegKeys[[RegistryKey]::HideVolumeLock],$HideLockVolume.IsPresent,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::LockVolume],$ToolMenuItems[[ToolMenuItem]::LockVolume].Checked,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::LoopPlayback],$CheckBoxes[[CheckboxID]::Loop].Checked,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::MainFormSize],@($Form1.Size.Width,$Form1.Size.Height),[W32RegKind]::MultiString)
+	$ARN.SetValue($RegKeys[[RegistryKey]::MainLvwColumnWidth],@($ListView1.Columns.Width),[W32RegKind]::MultiString)
+	$ARN.SetValue($RegKeys[[RegistryKey]::MainLvwFont],@($ListView1.Font.Name,$ListView1.Font.Size,$ListView1.Font.Style),[W32RegKind]::MultiString)
+	$ARN.SetValue($RegKeys[[RegistryKey]::Minimized],$Minimized.IsPresent,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::MiniMode],$ChkMini.Checked,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::Playlist],$PlayList,[W32RegKind]::String)
+	$ARN.SetValue($RegKeys[[RegistryKey]::RecurseDirectory],$CheckBoxes[[CheckboxID]::Recurse].Checked,[W32RegKind]::Binary)
+	$ARN.SetValue($RegKeys[[RegistryKey]::Volume],$Slider.Value,[W32RegKind]::DWord)
 
 	$ToolMenuItems[[ToolMenuItem]::DeleteSettings].Enabled = $True
 }
@@ -571,7 +567,7 @@ function Get-Settings{
 	$NewObj = [PSObject]::New()
 	for($C=0;$C -lt $RegKeys.Count;$C++){
 		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $RegKeys[$C]`
-			-Value (Get-RegistryProperty -Name $RegKeys[$C])
+			-Value ($ARN.ApplicationKey.GetValue($RegKeys[$C]))
 	}
 	return $NewObj
 }
@@ -579,7 +575,7 @@ function Get-Settings{
 function Install-Settings{
 	param([Parameter(Mandatory)][PSObject]$RS)
 
-	$B2S = {param($B);[Switch]($B -eq 1)}
+	$B2S = {param([Byte[]]$B);[Switch]($B[0] -eq 1)}
 
 	if($Script:PlayList.Length -eq 0 -and $RS.Playlist.Length -gt 0){$Script:PlayList=$RS.Playlist}
 	if(!$AutoPlay.IsPresent){$Script:AutoPlay = & $B2S $RS.AutoPlay}
@@ -1132,14 +1128,13 @@ function Show-MainForm{
 	if($LockVolume){Invoke-Command -ScriptBlock $LockVolume_Click}
 	if($SaveSettings.IsPresent){Save-Settings}
 	if($PlayList.Length -gt 0){
+        $SplashCfg = @{
+            AppName = $App.Name
+            Image   = ([BlueflameDynamics.IconTools]::ExtractIcon($DLL,[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),$IconSize.Splash))
+            FormBackColor = ([Drawing.Color]::GhostWhite)
+            }
 		Import-Module -Name .\SplashScreen.ps1 -Force
-		Show-SplashScreen `
-			-AppName $App.Name `
-			-Image ([BlueflameDynamics.IconTools]::ExtractIcon(
-				$DLL,
-				[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),
-				$IconSize.Splash))`
-			-PicBackColor ([Drawing.Color]::GhostWhite)
+		$SplashCfg | Show-SplashScreen 
 		Open-Playlist -NP
 		Close-SplashScreen
 	}
