@@ -62,7 +62,7 @@ PSRun3.exe -help
 |Filename|Description|
 |-|-|
 |BlueflameDynamics.IconTools.dll|Icon Utils Library|
-|Create-PSListing.ps1|Powershell Script Listing Cmdlet|
+|Create-PSListing.ps1|Powershell Script Listing Cmdlet with WordWrap|
 |Create-PSListing.SampleListing.pdf|Sample Powershell Script Listing|
 |Create-PSListingGUI.json|Powershell Script Listing GUI configuration json|
 |Create-PSListingGUI.ps1|Powershell Listing GUI front end|
