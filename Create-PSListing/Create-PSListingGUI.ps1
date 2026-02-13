@@ -1,11 +1,12 @@
-<#
+﻿<#
 .NOTES
 	File Name:	Create-PSListingGUI.ps1
-	Version:	1.1 - 11/18/2025
+	Version:	1.2 - 12/02/2025
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	03/14/2024
 	History:
+		V1.2 - 12/02/2025 - Added Support for Word Wrap Limit Switch -MaxLineLength 
 		V1.1 - 11/18/2025 - Added Sort Options
 		V1.0 - 03/14/2024 - Original Release
 
@@ -158,38 +159,39 @@ Remove-Variable -Name P,V
 #endregion
 #region Utility Functions
 Function Export-Settings{
-    param(
-        [Parameter(Mandatory)][PSTypeName('My.DialogResult')]$DR,
-        [Parameter(Mandatory)][string]$File)
-    if ($DR.Diagnostics) { return }
-    #Remove Properties Excluded from Export
-    foreach ($prop in 'SaveOnExit','Diagnostics','SelectedFile'){
-        if ($DR.PSObject.Properties.Match($prop)) {$DR.PSObject.Properties.Remove($prop)}
-    }
+	param(
+		[Parameter(Mandatory)][PSTypeName('My.DialogResult')]$DR,
+		[Parameter(Mandatory)][string]$File)
+	if ($DR.Diagnostics) { return }
+	#Remove Properties Excluded from Export
+	foreach ($prop in 'SaveOnExit','Diagnostics','SelectedFile'){
+		if ($DR.PSObject.Properties.Match($prop)) {$DR.PSObject.Properties.Remove($prop)}
+	}
 
-    if ($DR.PSObject.Properties.Match('TokenReport')) {
-        $tokenReport = $DR.TokenReport
-        if ($tokenReport -and $tokenReport.PSObject.Properties.Match('TokenReportOnly')) {
-            $tokenReport.PSObject.Properties.Remove('TokenReportOnly')
-        }
-    }
+	if ($DR.PSObject.Properties.Match('TokenReport')) {
+		$tokenReport = $DR.TokenReport
+		if ($tokenReport -and $tokenReport.PSObject.Properties.Match('TokenReportOnly')) {
+			$tokenReport.PSObject.Properties.Remove('TokenReportOnly')
+		}
+	}
 
-    #Set Object TypeName
-    $newType = 'My.Settings'
-    if ($DR.PSTypeNames.Count -gt 0) {
-        $DR.PSTypeNames[0] = $newType
-    } else {
-        $DR.PSTypeNames.Insert(0,$newType)
-    }
+	#Set Object TypeName
+	$newType = 'My.Settings'
+	if ($DR.PSTypeNames.Count -gt 0) {
+		$DR.PSTypeNames[0] = $newType
+	} else {
+		$DR.PSTypeNames.Insert(0,$newType)
+	}
 
-    Add-Member -InputObject $DR -MemberType NoteProperty -Name TypeName -Value $newType -Force
+	Add-Member -InputObject $DR -MemberType NoteProperty -Name TypeName -Value $newType -Force
 
-    #Export to JSON
-    try {
-        $DR | ConvertTo-Json -Depth $DR.JsonDepth | Set-Content -Path $File -ErrorAction Stop
-    } catch {
-        Write-Error "Failed to export settings: $_"
-    }
+	#Export to JSON
+	try {
+		$DR.JsonDepth = Get-JsonDepthFromObject -JsonObject $DR
+		$DR | ConvertTo-Json -Depth $DR.JsonDepth | Set-Content -Path $File -ErrorAction Stop
+	} catch {
+		Write-Error "Failed to export settings: $_"
+	}
 }
 Function Import-Settings{
 	param([Parameter(Mandatory)][String]$File)
@@ -198,15 +200,118 @@ Function Import-Settings{
 	$RV.PSTypeNames.Insert(0,$RV.TypeName)
 	$RV
 }
+Function Convert-LabelToPropertyName{
+    [CmdletBinding(DefaultParameterSetName='Remove')]
+    param(
+        [Parameter(Mandatory)][string]$InputString,
+        [Parameter(ParameterSetName='Remove')][String[]]$Symbols,
+        [Parameter(ParameterSetName='Replace')][HashTable]$Replacements,
+        [Switch]$RemoveUnderscore
+    )
+
+    Switch ($PSCmdlet.ParameterSetName) {
+        'Remove' {
+            foreach ($s in $Symbols) {
+                $InputString = $InputString -replace [Regex]::Escape($s), ''
+            }
+        }
+        'Replace' {
+            foreach ($key in $Replacements.Keys) {
+                $InputString = $InputString -replace [Regex]::Escape($key), $Replacements[$key]
+            }
+        }
+    }
+
+    $InputString = $InputString.Trim()
+
+    if ($RemoveUnderscore) {
+        $InputString = $InputString -replace '[^a-zA-Z0-9 ]',''
+    } else {
+        $InputString = $InputString -replace '[^a-zA-Z0-9_ ]',''
+    }
+
+    $Tokens = $InputString -split '(\s+|_)'
+
+    $PascalCase = ($Tokens | ForEach-Object {
+        if ($_ -eq '_') {
+            if (-not $RemoveUnderscore) { '_' }
+        } elseif ($_ -match '\S') {
+            $_.Substring(0,1).ToUpper() + $_.Substring(1).ToLower()
+        }
+    }) -join ''
+
+    return $PascalCase
+}
 #endregion
-#region Custom Classes
+#region JsonDepthCalculator Functions
+function Get-JsonDepthFromObject {
+	param(
+		[Parameter(Mandatory)][object]$JsonObject,
+		[ValidateRange(1,1024)][int]$DepthLimit = 100,
+
+		[switch]$IncludeParent)
+
+	try {
+		if($PSVersionTable.PSVersion -ge [Version]"6.2"){
+			$jsonString = $JsonObject | ConvertTo-Json -Depth $DepthLimit -Compress}  
+		else{$jsonString = $JsonObject | ConvertTo-Json -Compress}
+		return Get-JsonDepthFromString -JsonString $jsonString -DepthLimit $DepthLimit -IncludeParent:$IncludeParent
+	}
+	catch {throw "Invalid JSON object: $_"}
+}
+
+function Get-JsonDepthFromString {
+	param(
+		[Parameter(Mandatory)][string]$JsonString,
+		[ValidateRange(1,1024)][int]$DepthLimit = 100,
+		[switch]$IncludeParent)
+
+	try {
+		# ConvertFrom-Json -Depth is only supported in PS 6.2+
+		if ($PSVersionTable.PSVersion -ge [Version]'6.2') {
+			$parsed = $JsonString | ConvertFrom-Json -Depth $DepthLimit}
+		else {$parsed = $JsonString | ConvertFrom-Json}
+		return Calculate-JsonDepth -Element $parsed -IncludeParent:$IncludeParent
+	}
+	catch {throw "Invalid JSON string: $_"}
+}
+
+function Calculate-JsonDepth {
+	param(
+		[Parameter(Mandatory)][Object]$Element,
+		[Switch]$IncludeParent
+	)
+
+	$maxDepth = if ($IncludeParent) { 1 } else { 0 }
+	if ($null -eq $Element) { return $maxDepth }
+
+	if ($Element -is [System.Management.Automation.PSCustomObject]) {
+		foreach ($prop in $Element.PSObject.Properties) {
+			$maxDepth = [Math]::Max($maxDepth, 1 + (Calculate-JsonDepth -Element $prop.Value -IncludeParent:$IncludeParent))
+		}
+	}
+	elseif ($Element -is [System.Collections.IDictionary]) {
+		foreach ($key in $Element.Keys) {
+			$maxDepth = [Math]::Max($maxDepth, 1 + (Calculate-JsonDepth -Element $Element[$key] -IncludeParent:$IncludeParent))
+		}
+	}
+	elseif ($Element -is [System.Collections.IEnumerable] -and -not ($Element -is [string])) {
+		foreach ($item in $Element) {
+			$maxDepth = [Math]::Max($maxDepth, 1 + (Calculate-JsonDepth -Element $item -IncludeParent:$IncludeParent))
+		}
+	}
+
+	return $maxDepth
+}
+#endregion
+#region Custom Form Classes
 Class Settings{
 	$ChkBxText = @('Include Tokens','Open In Web Browser','Output To Temp','Save on Exit')
-	$LabelText = @('HTML Font Size','Tab Expansion Width','Listing Line # Width')
-	$IV	= @(1,2,1)
-	$Min = @(10,2,2)
-	$Max = @(24,8,8)
-	$Value = @(16,4,4)
+	$LabelText = @('HTML Font Size','Tab Expansion Width','Listing Line # Width','Listing Word Wrap Limit')
+	$IV	= @(1,2,1,5)
+	$Min = @(10,2,2,25)
+	$Max = @(24,8,8,200)
+	$Value = @(16,4,4,100)
 	$GroupBox = (New-ObjectArray -TypeName Windows.Forms.GroupBox -Count 1)
 	$Labels = (New-ObjectArray -TypeName Windows.Forms.Label -Count $This.LabelText.Count)
 	$NumUpDowns = (New-ObjectArray -TypeName Windows.Forms.NumericUpDown -Count $This.LabelText.Count)
@@ -221,9 +326,10 @@ Class Settings{
 		$This.GroupBox.Controls.AddRange($This.NumUpDowns)
 		$This.GroupBox.Controls.AddRange($This.CheckBoxes)
 		#region Labels
-		$C = 0; $Y = 23
+		$C = 0; $Y = 19
 		ForEach($Lbl in $This.Labels){
-			$Lbl.Size = [Drawing.Size]::New(115,15)
+			$Lbl.AutoSize = $False
+			$Lbl.Size = [Drawing.Size]::New(130,14)
 			$Lbl.Location = [Drawing.Point]::New(10,$Y)
 			$Lbl.Name = 'Lbl'+$This.LabelText[$C].Replace(' ','')
 			$Lbl.TabStop = $False
@@ -236,8 +342,9 @@ Class Settings{
 		$C = 0; $Y = 19; $T = 3
 		ForEach($Nud in $This.NumUpDowns){
 			$Nud.Size = [Drawing.Size]::New(49,23)
-			$Nud.Location = [Drawing.Point]::New(140,$Y)
-			$Nud.Name = 'Nud'+$This.LabelText[$C].Replace(' ','')
+			$Nud.Location = [Drawing.Point]::New(148,$Y)
+			#$Nud.Name = 'Nud'+$This.LabelText[$C].Replace(' ','')
+			$Nud.Name = 'Nud'+(Convert-LabelToPropertyName -InputString $This.LabelText[$C] -Symbols '#')
 			$Nud.TabStop = $True
 			$Nud.TabIndex = $T
 			$Nud.Increment = $This.IV[$C]
@@ -250,7 +357,7 @@ Class Settings{
 		}
 		#endregion
 		#region Checkboxes
-		$C = 0; $Y = 87; #$T = 6
+		$C = 0; $Y += 3; #$T = 7
 		ForEach($CB in $This.CheckBoxes){
 			$CB.Name = 'Chk'+$This.ChkBxText[$C].Replace(' ','')
 			$CB.Text = $This.ChkBxText[$C]
@@ -572,7 +679,8 @@ Function Mount-Settings{
 		$GrpOptions.Item('TlpButtons').Controls.Item('Rdo'+$My.Settings.DiagOut).Checked = $True
 		$GrpSettings.Item('NudHTMLFontSize').Value = $My.Settings.HTMLFontSize
 		$GrpSettings.Item('NudTabExpansionWidth').Value = $My.Settings.TabExpansionWidth
-		$GrpSettings.Item('NudListingLine#Width').Value = $My.Settings.ListingLineNoWidth
+		$GrpSettings.Item('NudListingLineWidth').Value = $My.Settings.ListingLineNoWidth
+		$GrpSettings.Item('NudListingWordWrapLimit').Value = $My.Settings.ListingWordWrapLimit
 		$GrpSettings.Item('ChkIncludeTokens').Checked = $My.Settings.IncludeTokens
 		$GrpSettings.Item('ChkOpenInWebBrowser').Checked = $My.Settings.OpenInWebBrowser
 		$GrpSettings.Item('ChkOutputToTemp').Checked = $My.Settings.OutputToTemp
@@ -599,7 +707,8 @@ Function Get-DialogResults{
 		DiagOut = if($GrpOptions.Item('TlpButtons').Controls.Item('RdoGrid').Checked){'Grid'}Else{'Host'}
 		HTMLFontSize = $GrpSettings.Item('NudHTMLFontSize').Value
 		TabExpansionWidth = $GrpSettings.Item('NudTabExpansionWidth').Value
-		ListingLineNoWidth = $GrpSettings.Item('NudListingLine#Width').Value
+		ListingLineNoWidth = $GrpSettings.Item('NudListingLineWidth').Value
+		ListingWordWrapLimit = $GrpSettings.Item('NudListingWordWrapLimit').Value
 		IncludeTokens = $GrpSettings.Item('ChkIncludeTokens').Checked
 		OpenInWebBrowser = $GrpSettings.Item('ChkOpenInWebBrowser').Checked
 		OutputToTemp = $GrpSettings.Item('ChkOutputToTemp').Checked
@@ -648,6 +757,7 @@ if($DR.Diagnostics){
 	-FontSize $DR.HTMLFontSize`
 	-TabWidth $DR.TabExpansionWidth`
 	-LineNoWidth $DR.ListingLineNoWidth`
+	-MaxLineLength $DR.ListingWordWrapLimit`
 	-OutputTo $DR.TokenReport.OutputTo`
 	-MaxContentLength $DR.TokenReport.MaxCommentLength`
 	-ShowComments:$DR.TokenReport.IncludeCommentType`
