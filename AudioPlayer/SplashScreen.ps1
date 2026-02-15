@@ -304,7 +304,7 @@ $SplashScript = {
 		#region --- Msg Label
 		$UI.LblMsg.Parent      = $UI.Splash
 		$UI.LblMsg.Size        = [Drawing.Size]::New($UI.SharedWidth, 20)
-		$UI.LblMsg.Location    = [Drawing.Point]::New(13, $UI.ProgressBar.Top - ($UI.LblMsg.Height + 5))
+		$UI.LblMsg.Location    = [Drawing.Point]::New(13, $UI.ProgressBar.Top - ($UI.LblMsg.Height + 2))
 		$UI.LblMsg.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
 		$UI.LblMsg.BackColor   = [Drawing.SystemColors]::Control
 		$UI.LblMsg.Font        = $UI.PSCoreFont
@@ -319,8 +319,8 @@ $SplashScript = {
 		else {
 			$UI.PicBox = [Windows.Forms.PictureBox]::New()
 			$UI.PicBox.Parent      = $UI.Splash
-			$UI.PicBox.Size        = [Drawing.Size]::New($UI.SharedWidth, $UI.LblMsg.Top - 18)
 			$UI.PicBox.Location    = [Drawing.Point]::New(13,13)
+			$UI.PicBox.Size        = [Drawing.Size]::New($UI.SharedWidth, $UI.LblMsg.Top - 15)
 			$UI.PicBox.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
 			$UI.PicBox.Image       = $Image
 			$UI.PicBox.Visible     = $True
