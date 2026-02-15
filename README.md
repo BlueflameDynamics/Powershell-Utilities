@@ -30,6 +30,7 @@ PSRun3.exe -help
 |Exists.ps1|.Net Directory/File existance test function|
 |ListviewSearchLib.ps1|ListLiew Search Library|
 |ListViewSortLib.ps1|ListView Sort Library|
+|OSInfoLib.ps1|Windows OS Info Library|
 |PCVolumeControl.ps1|Wrapper for C# code calling the Windows APIs for PC Audio Volume Control on Windows Vista \& above.|
 |PropertySheetDialog.ps1|Custom Property Sheet Dialog|
 |PS\_Audio\_Player\_Help.txt|AudioPlayer Help File|
