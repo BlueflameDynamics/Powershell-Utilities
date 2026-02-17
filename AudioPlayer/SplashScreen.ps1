@@ -54,7 +54,7 @@ Optional, Show Progress percentage in Modern mode
 param(
 	[Parameter()][Switch]$Demo,
 	[Parameter()][Int]$Delay=30,
-	[Parameter()][ValidateSet('Legacy','Modern')][String]$Mode='Legacy',
+	[Parameter()][ValidateSet('Legacy','Marquee','Modern')][String]$Mode='Legacy',
 	[Parameter()][Int]$ImageSize=256,
 	[Parameter()][System.Windows.Forms.PictureBoxSizeMode]$PbSizeMode=[Windows.Forms.PictureBoxSizeMode]::Zoom,
 	[Parameter()][System.Windows.Forms.ImageLayout]$BGILayout=[Windows.Forms.ImageLayout]::Zoom,
@@ -138,9 +138,9 @@ Function Invoke-Ternary {
 	$condResult = if ($Condition -is [scriptblock]){& $Condition}else{$Condition}
 
 	if ($condResult){
-		if ($IfTrue -is [scriptblock]) { & $IfTrue } else { $IfTrue }
+		if ($IfTrue -is [scriptblock]){& $IfTrue}else{$IfTrue}
 	} else {
-		if ($IfFalse -is [scriptblock]) { & $IfFalse } else { $IfFalse }
+		if ($IfFalse -is [scriptblock]){& $IfFalse}else{$IfFalse}
 	}
 }
 Set-Alias -Name ?: -Value Invoke-Ternary
@@ -225,35 +225,36 @@ process {
 	$Image         = $Config.Image # Required Parameter
 	$Mode          = ?: ($Null -ne $Config.Mode) {$Config.Mode} 'Legacy'
 	$AppName       = ?: ($Null -ne $Config.AppName) {$Config.AppName} 'Application'
-	$FormBackColor = ?: ($Config.FormBackColor) $Config.FormBackColor [Drawing.SystemColors]::Control
-	$PicBackColor  = ?: ($Null -ne $Config.PicBackColor) {$Config.PicBackColor} {[Drawing.SystemColors]::Control}
-	$PbSizeMode    = ?: ($Null -ne $Config.PbSizeMode) {$Config.PbSizeMode} {[Windows.Forms.PictureBoxSizeMode]::Zoom}
-	$BGILayout     = ?: ($Null -ne $Config.BGILayout) {$Config.BGILayout} {[Windows.Forms.ImageLayout]::Zoom}
+	$FormBackColor = ?: ($Config.FormBackColor) $Config.FormBackColor ([Drawing.SystemColors]::Control)
+	$PicBackColor  = ?: ($Null -ne $Config.PicBackColor) {$Config.PicBackColor} ([Drawing.SystemColors]::Control)
+	$PbSizeMode    = ?: ($Null -ne $Config.PbSizeMode) {$Config.PbSizeMode} ([Windows.Forms.PictureBoxSizeMode]::Zoom)
+	$BGILayout     = ?: ($Null -ne $Config.BGILayout) {$Config.BGILayout} ([Windows.Forms.ImageLayout]::Zoom)
 	$Message       = ?: ($Null -ne $Config.Message) {$Config.Message} {('{0} Loading, Please Wait ...' -f $AppName)}
 	$ProgressBarForeColor = ?: ($Null -ne $Config.ProgressBarForeColor) {$Config.ProgressBarForeColor} {[Drawing.SystemColors]::Highlight}
 	$ProgressBarBackColor = ?: ($Null -ne $Config.ProgressBarBackColor) {$Config.ProgressBarBackColor} {[Drawing.SystemColors]::Control}
-	$ProgressBarStyle = if ($Null -ne $Config.ProgressBarStyle) { $Config.ProgressBarStyle } else { [Windows.Forms.ProgressBarStyle]::Continuous }
 	$BgImage = $Config.BgImage
 	$ShowPbText = $Config.ShowPbText
 
-	if (-not $Image) { throw 'Image is required in Config object.' }
+	if(-not $Image){throw 'Image is required in Config object.'}
 
 $SplashScript = {
 	param(
 		[Parameter(Mandatory)][String]$Mode,
 		[Parameter(Mandatory)][Drawing.Image]$Image,
 		[Parameter()][String]$AppName = 'Application',
+		[Parameter()][String]$Message = $Message,
 		[Parameter()][Drawing.Color]$FormBackColor = [Drawing.SystemColors]::Control,
 		[Parameter()][Drawing.Color]$PicBackColor = [Drawing.SystemColors]::Control,
 		[Parameter()][Windows.Forms.PictureBoxSizeMode]$PbSizeMode = [Windows.Forms.PictureBoxSizeMode]::Zoom,
 		[Parameter()][Windows.Forms.ImageLayout]$BGILayout = [Windows.Forms.ImageLayout]::Zoom,
 		[Parameter()][Drawing.Color]$ProgressBarForeColor = [Drawing.SystemColors]::Highlight,
 		[Parameter()][Drawing.Color]$ProgressBarBackColor = [Drawing.SystemColors]::Control,
-		[Parameter()][Windows.Forms.ProgressBarStyle]$ProgressBarStyle = [Windows.Forms.ProgressBarStyle]::Continuous,
 		[Parameter()][Switch]$BgImage,
 		[Parameter()][Switch]$ShowPbText)
 
-	$MsgMasks = @('{0}%','{0} Loading, Please Wait ...' )
+	# Ensure WinForms + visual styles are initialized for ALL hosts (console, ISE, VSCode)
+	Add-Type -AssemblyName System.Windows.Forms
+	[Windows.Forms.Application]::EnableVisualStyles()
 
 	Function New-Splash{       
 		# --- Form + Controls
@@ -262,55 +263,61 @@ $SplashScript = {
 			ProgressBar = [Windows.Forms.ProgressBar]::New()
 			LblMsg      = [Windows.Forms.Label]::New()
 			PbMsg       = [Windows.Forms.Label]::New()
-			PSCoreFont  = [Drawing.Font]::New('Segoe UI', 9, [Drawing.FontStyle]::Regular)
+			PSCoreFont  = [Drawing.Font]::New('Segoe UI',9,[Drawing.FontStyle]::Regular)
 			Timer       = [Windows.Forms.Timer]::New()
 			SharedWidth = 0
 			PicBox      = $null}
+
 		#region --- Splash
-		$UI.Splash.Size            = [Drawing.Size]::New(475, 325)
+		$UI.Splash.Size            = [Drawing.Size]::New(475,325)
 		$UI.Splash.StartPosition   = [Windows.Forms.FormStartPosition]::CenterScreen
-		$UI.Splash.Font            = [Drawing.Font]::New('Arial', 12, [Drawing.FontStyle]::Regular)
+		$UI.Splash.Font            = [Drawing.Font]::New('Arial',12,[Drawing.FontStyle]::Regular)
 		$UI.Splash.BackColor       = $FormBackColor
 		$UI.Splash.FormBorderStyle = [Windows.Forms.BorderStyle]::None
 		$UI.Splash.ShowInTaskbar   = $False
 		$UI.SharedWidth = $UI.Splash.Width - 25
 		#endregion
+
 		#region --- ProgressBar
-		$UI.ProgressBar.Style     = $ProgressBarStyle
 		$UI.ProgressBar.ForeColor = $ProgressBarForeColor
 		$UI.ProgressBar.BackColor = $ProgressBarBackColor
 		$UI.ProgressBar.Parent    = $UI.Splash
 		$UI.ProgressBar.Minimum   = 0
 		$UI.ProgressBar.Maximum   = $SyncHash.MaxValue
 		$UI.ProgressBar.Visible   = $True
-		$UI.ProgressBar.Size      = [Drawing.Size]::New($UI.SharedWidth, 20)
-		$UI.ProgressBar.Location  = [Drawing.Point]::New(13, $UI.Splash.Height - ($UI.ProgressBar.Height + 10))
+		$UI.ProgressBar.Size      = [Drawing.Size]::New($UI.SharedWidth,20)
+		$UI.ProgressBar.Location  = [Drawing.Point]::New(13,$UI.Splash.Height - ($UI.ProgressBar.Height + 10))
+		$UI.ProgressBar.Style     = [Windows.Forms.ProgressBarStyle]::Continuous
 		#endregion
+
 		#region --- Progress Label
 		if($ShowPbText){
-		    $UI.PbMsg.Parent      = $UI.Splash
-		    $UI.PbMsg.Size        = [Drawing.Size]::New(35, 20)
-		    $UI.PbMsg.Location    = $UI.ProgressBar.Location
+			$UI.PbMsg.Parent      = $UI.Splash
+			$UI.PbMsg.Size        = [Drawing.Size]::New(35,20)
+			$UI.PbMsg.Location    = $UI.ProgressBar.Location
 			$UI.ProgressBar.Width -= $UI.PbMsg.Width
 			$UI.ProgressBar.Left  += $UI.PbMsg.Width
-		    $UI.PbMsg.BorderStyle = [Windows.Forms.BorderStyle]::None
-		    $UI.PbMsg.BackColor   = [Drawing.Color]::Transparent
-		    $UI.PbMsg.ForeColor   = [Drawing.Color]::Black
-		    $UI.PbMsg.Font        = $UI.PSCoreFont
-		    $UI.PbMsg.Text        = $MsgMasks[0] -f $UI.ProgressBar.Value
-		    $UI.PbMsg.TextAlign   = [Drawing.ContentAlignment]::MiddleCenter 
-		    $UI.PbMsg.Visible     = $True}
+			$UI.PbMsg.BorderStyle = [Windows.Forms.BorderStyle]::None
+			$UI.PbMsg.BackColor   = [Drawing.Color]::Transparent
+			$UI.PbMsg.ForeColor   = [Drawing.Color]::Black
+			$UI.PbMsg.Font        = $UI.PSCoreFont
+			$UI.PbMsg.Text        = '{0}%' -f $UI.ProgressBar.Value
+			$UI.PbMsg.TextAlign   = [Drawing.ContentAlignment]::MiddleCenter 
+			$UI.PbMsg.Visible     = $True
+		}
 		#endregion
+
 		#region --- Msg Label
 		$UI.LblMsg.Parent      = $UI.Splash
-		$UI.LblMsg.Size        = [Drawing.Size]::New($UI.SharedWidth, 20)
-		$UI.LblMsg.Location    = [Drawing.Point]::New(13, $UI.ProgressBar.Top - ($UI.LblMsg.Height + 2))
+		$UI.LblMsg.Size        = [Drawing.Size]::New($UI.SharedWidth,20)
+		$UI.LblMsg.Location    = [Drawing.Point]::New(13,$UI.ProgressBar.Top - ($UI.LblMsg.Height + 2))
 		$UI.LblMsg.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
 		$UI.LblMsg.BackColor   = [Drawing.SystemColors]::Control
 		$UI.LblMsg.Font        = $UI.PSCoreFont
-		$UI.LblMsg.Text        = $MsgMasks[1] -f $AppName
+		$UI.LblMsg.Text        = $Message
 		$UI.LblMsg.Visible     = $True
 		#endregion
+
 		#region --- Image / PictureBox
 		if ($BgImage) {
 			$UI.Splash.BackgroundImage       = $Image
@@ -320,7 +327,7 @@ $SplashScript = {
 			$UI.PicBox = [Windows.Forms.PictureBox]::New()
 			$UI.PicBox.Parent      = $UI.Splash
 			$UI.PicBox.Location    = [Drawing.Point]::New(13,13)
-			$UI.PicBox.Size        = [Drawing.Size]::New($UI.SharedWidth, $UI.LblMsg.Top - 15)
+			$UI.PicBox.Size        = [Drawing.Size]::New($UI.SharedWidth,$UI.LblMsg.Top - 15)
 			$UI.PicBox.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
 			$UI.PicBox.Image       = $Image
 			$UI.PicBox.Visible     = $True
@@ -329,13 +336,15 @@ $SplashScript = {
 			if($PbSizeMode -eq [Windows.Forms.PictureBoxSizeMode]::AutoSize){
 				$UI.PicBox.Left = ($UI.Splash.Width - $UI.PicBox.Width)/2
 				$UI.PicBox.Top  = ($UI.LblMsg.Top - $UI.PicBox.Height)/2
-				}
+			}
 		}
 		#endregion
+
 		return $UI 
 	}
+
 	Function Invoke-Timer{
-		# --- Timer --------------------------------------------------------------
+		# --- Timer ------------
 		$UI.Timer.Interval = 500
 		$Timer_Tick = {
 			if ($SyncHash.Flag -eq $false){
@@ -343,42 +352,50 @@ $SplashScript = {
 				return
 			}
 
-			if ($Mode -eq 'Legacy'){
-				# --- Legacy fixed progress bar behavior ---
-				if ($UI.ProgressBar.Value -ge $UI.ProgressBar.Maximum){
-					$UI.ProgressBar.Value = $UI.ProgressBar.Minimum
+			switch($Mode){
+				'Legacy' {
+					# --- Legacy fixed progress bar behavior ---
+					if ($UI.ProgressBar.Value -ge $UI.ProgressBar.Maximum){
+						$UI.ProgressBar.Value = $UI.ProgressBar.Minimum
+					}
+					$UI.ProgressBar.Value++
+					$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
+					$UI.ProgressBar.Refresh()
+					$UI.LblMsg.Text = $Message 
 				}
-				$UI.ProgressBar.Value++
-				# --- Legacy fixed message ---
-				$UI.LblMsg.Text = $MsgMasks[1] -f $AppName
-				# --- Legacy fixed style ---
-				$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
-			}
-			else {
-				# --- Modern dynamic progress behavior ---
-				if ($SyncHash.ProgressValue -ge $UI.ProgressBar.Minimum -and
-					$SyncHash.ProgressValue -le $UI.ProgressBar.Maximum){
-					$UI.ProgressBar.Value = $SyncHash.ProgressValue
-					$UI.PbMsg.Text = $MsgMasks[0] -f $UI.ProgressBar.Value
-					if ($UI.ProgressBar.Style -eq [Windows.Forms.ProgressBarStyle]::Marquee -and
-						$SyncHash.ProgressValue -lt $UI.ProgressBar.Maximum){
-						$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
+				'Marquee' {
+					[Windows.Forms.Application]::EnableVisualStyles()
+					$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Marquee
+					$UI.ProgressBar.MarqueeAnimationSpeed = -1
+
+					 # Only update message AFTER first Update-Splash call
+					if ($SyncHash.ProgressValue -gt 0) {
+						$UI.LblMsg.Text = $SyncHash.ProgressMessage
 					}
 				}
-				else {
-					$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Marquee
-				}
-				# --- Modern dynamic message ---
-				if ($UI.ProgressBar.Value -gt 0){
-					$UI.LblMsg.Text = $SyncHash.ProgressMessage
+				'Modern' {
+					# --- Modern dynamic progress behavior ---
+					if ($SyncHash.ProgressValue -ge $UI.ProgressBar.Minimum -and
+						$SyncHash.ProgressValue -le $UI.ProgressBar.Maximum){
+						$UI.ProgressBar.Value = $SyncHash.ProgressValue
+						$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
+						$UI.ProgressBar.Refresh()
+						if($ShowPbText){
+							$UI.PbMsg.Text = '{0}%' -f $UI.ProgressBar.Value
+						}
+					}
+					# --- Modern dynamic message ---
+					if ($UI.ProgressBar.Value -gt 0){
+						$UI.LblMsg.Text = $SyncHash.ProgressMessage
+					}
 				}
 			}
 			[Windows.Forms.Application]::DoEvents()
 		}
 		$UI.Timer.Add_Tick($Timer_Tick)
 		$UI.Timer.Enabled = $True
-		$UI.Timer.Start()			
 	}
+
 	Function Enable-SplashDragging{
 		$Splash_Shown = {
 			$UI.Splash.Activate()
@@ -391,20 +408,36 @@ $SplashScript = {
 		$Splash_MouseDown = {
 			if ($_.Button -eq [Windows.Forms.MouseButtons]::Left){
 				[Win32]::ReleaseCapture() | Out-Null
-				[Win32]::SendMessage($UI.Splash.Handle, $WM_NCLBUTTONDOWN, $HTCAPTION, 0)
+				[Win32]::SendMessage($UI.Splash.Handle,$WM_NCLBUTTONDOWN,$HTCAPTION,0)
 			}
 		}
 		$UI.Splash.Add_MouseDown($Splash_MouseDown)
 		foreach ($ctrl in $UI.Splash.Controls){
 			$ctrl.Add_MouseDown($Splash_MouseDown)
-		}	
+		}   
 	}
+
 	Function Show-Splash{
 		$InitialFormWindowState = $UI.Splash.WindowState
-		$UI.Splash.Add_Load({$This.WindowState = $InitialFormWindowState})
+
+		$UI.Splash.Add_Shown({
+			# Force handle creation BEFORE starting the timer
+			$UI.Splash.CreateControl()
+			$UI.ProgressBar.CreateControl()
+
+			# Start the timer AFTER the handle exists
+			$UI.Timer.Start()
+
+			# Prime the message pump (important for console hosts)
+			[Windows.Forms.Application]::DoEvents()
+		})
+
+		$UI.Splash.Add_Load({ $This.WindowState = $InitialFormWindowState })
+
 		$SyncHash.SplashIsLoaded++
-		$UI.Splash.ShowDialog()		
+		$UI.Splash.ShowDialog()     
 	}
+
 	$Win32Drag = {
 #region Win32 Dragging
 Add-Type @"
@@ -426,28 +459,27 @@ public class Win32 {
 		if ($SyncHash.SplashIsLoaded -eq 0){
 			$WM_NCLBUTTONDOWN = 0xA1
 			$HTCAPTION        = 0x2
-			Add-Type -AssemblyName System.Windows.Forms
 			& $Win32Drag
 			$UI = New-Splash
 			Invoke-Timer
-		    Enable-SplashDragging
+			Enable-SplashDragging
 			Show-Splash
 		}
 	}
 }
 
-	# --- Set SplashRunspace Parameters & Invoke ----------------------
+	# --- Set SplashRunspace Parameters & Invoke ---
 	$Script:SplashRunspace = [SplashRunspace]::New('SyncHash')
 	[void]$SplashRunspace.Powershell.AddScript($SplashScript)
 	[void]$SplashRunspace.Powershell.AddParameter('Mode',$Mode)
 	[void]$SplashRunspace.Powershell.AddParameter('AppName',$AppName)
+	[void]$SplashRunspace.Powershell.AddParameter('Message',$Message)
 	[void]$SplashRunspace.Powershell.AddParameter('Image',$Image)
 	[void]$SplashRunspace.Powershell.AddParameter('FormBackColor',$FormBackColor)
 	[void]$SplashRunspace.Powershell.AddParameter('PicBackColor',$PicBackColor)
 	[void]$SplashRunspace.Powershell.AddParameter('PbSizeMode',$PbSizeMode)
 	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarForeColor',$ProgressBarForeColor)
 	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarBackColor',$ProgressBarBackColor)
-	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarStyle',$ProgressBarStyle)
 	if($ShowPbText){[void]$SplashRunspace.Powershell.AddParameter('ShowPbText')}
 	if($BgImage){
 	    [void]$SplashRunspace.Powershell.AddParameter('BgImage')
@@ -486,7 +518,6 @@ Function Close-SplashScreen{
 	$SplashRunspace.PowerShell.Dispose()
 	$Script:SplashRunspace = $Null
 }
-
 #endregion
 
 if($Demo.IsPresent){
@@ -496,7 +527,7 @@ Function Get-Icon{
 	Import-Module -Name .\OSInfoLib.ps1 -Force
 	$IcoIdx = ?: (Get-OSVersion).IsWin11 312 311
 	$DLLPath = '.\BlueflameDynamics.IconTools.dll'
-	if((Test-Exists -Mode File -Location $DLLPath) -eq $True){
+	if((Test-Exists -Mode File -Location $DLLPath)){
 		Add-Type -Path $DLLPath
 		Start-Sleep -Seconds 1
 		$Icon = [BlueflameDynamics.IconTools]::ExtractIcon(
@@ -518,8 +549,8 @@ Function Start-Demo {
 	)
 
 	# Confugure splash
-	$config = [PSCustomObject]@{
-	AppName = ?: ($Mode -eq 'Modern') 'SplashScreen Demo' {$Null}
+	$Config = [PSCustomObject]@{
+	AppName = ?: ($Mode -ne 'Legacy') 'SplashScreen Demo' {$Null}
 	Mode = $Mode
 	Image = $SSIcon
 	ShowPbText = $ShowPbText
@@ -528,25 +559,17 @@ Function Start-Demo {
 	BgiLayout = $BGILayout
 	ImageSize = $ImageSize
 	PbSizeMode = $PbSizeMode
-	#Message = 'Initializing modules...'
-	# Starts in marquee, switches to continuous once values appear,
-	ProgressBarStyle = [Windows.Forms.ProgressBarStyle]::Marquee 
+	#Message = 'Initializing modules...X'
 	#Uncomment to Override Powershell Defaults
 	#ProgressBarForeColor = [Drawing.Color]::LimeGreen
 	#ProgressBarBackColor = [Drawing.Color]::ForestGreen
-	<#
-	[Windows.Forms.ProgressBarStyle]::Blocks is ignored by some Powershell Hosts like the ISE.
-	This is because 'Blocks' is the default ProgressBarStyle used before Windows XP. 
-	Thus 'Blocks' works only on Console Hosts.
-	The ISE defaults to Windows animated Green with Yellow flashes.
-	#>
+	#The ISE defaults to Windows animated Green with Yellow flashes.
 }
 
 	# Show splash
-	$config|Show-SplashScreen 
+	$Config|Show-SplashScreen 
 	Start-Sleep -Seconds 5
-	$total = ($Steps|ForEach-Object{$_.Weight}|Measure-Object -Sum).Sum
-	$progress = 0
+	[void] ($Steps|ForEach-Object{$_.Weight}|Measure-Object -Sum).Sum
 	foreach ($step in $Steps){
 		Update-Splash -Message $step.Name -Weight $step.Weight
 		# Simulate work
