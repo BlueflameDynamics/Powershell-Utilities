@@ -41,14 +41,17 @@ An optional value in seconds that may be used to alter the default 30 second dem
 Optional, Specifies mode of operation
 .Parameter ImageSize
 Optional sets the square image size for the demo.
-.Parameter PbSizeMode
+.Parameter PbxSizeMode
 Optional sets the [Windows.Forms.PictureBoxSizeMode] for the demo.
 .Parameter BgImage 
 Optional switch causes the image to be background image
 .Parameter BGILayout
 Optional BackgroundImageLayout.
-.Parameter ShowPbText
-Optional, Show Progress percentage in Modern mode
+.Parameter ShowProgressText
+Optional, Show ProgressBar percentage in Modern mode
+.Parameter UseVisualStyles
+Optional, Enables Winforms VisualStyles, overrides ProgressBar colots
+in favor of OS style ProgressBar and alters how other controls are rendered.
 #>
 [CmdletBinding()]
 param(
@@ -56,18 +59,19 @@ param(
 	[Parameter()][Int]$Delay=30,
 	[Parameter()][ValidateSet('Legacy','Marquee','Modern')][String]$Mode='Legacy',
 	[Parameter()][Int]$ImageSize=256,
-	[Parameter()][System.Windows.Forms.PictureBoxSizeMode]$PbSizeMode=[Windows.Forms.PictureBoxSizeMode]::Zoom,
+	[Parameter()][System.Windows.Forms.PictureBoxSizeMode]$PbxSizeMode=[Windows.Forms.PictureBoxSizeMode]::Zoom,
 	[Parameter()][System.Windows.Forms.ImageLayout]$BGILayout=[Windows.Forms.ImageLayout]::Zoom,
 	[Parameter()][Switch]$BgImage,
-	[Parameter()][Switch]$ShowPbText)
+	[Parameter()][Switch]$ShowProgressText,
+	[Parameter()][Switch]$UseVisualStyles)
 
 <#
-Declare the Custom Runspace Object used by SplashScreen methods as
-a Script level variable and a value of $Null. This variable will be loaded with a new
-SplashRunspace object each time you call Show-SplashScreen and this script level 
-variable is null otherwise Show-SplashScreen exits assuming a splash screen is 
-already running. As part of Close-SplashScreen this variable wiil be reset to $Null
-this prevents multiple calls to Show-SplashScreen without a call to Close-SplashScreen.
+Declare the Custom Runspace Object used by SplashScreen methods as a Script level 
+variable and a value of $Null. This variable will be loaded with a new SplashRunspace object
+each time you call Show-SplashScreen and this script level variable is null otherwise 
+Show-SplashScreen exits assuming a splash screen is already running. As part of 
+Close-SplashScreen this variable wiil be reset to $Null this prevents multiple
+calls to Show-SplashScreen without a call to Close-SplashScreen.
 #>
 $Script:SplashRunspace = $Null
 
@@ -85,9 +89,9 @@ representing the separate thread where the splash screen script will run. This p
 of the [Powershell] object it contains. The last top-level property is Handle, this is the [IAsyncResult] object
 returned when the background thread is fired by a call to the Splashrunspace.Powershell.BeginInvoke() method. This
 objects properties provide status information about the background thread and is passed back when Close-SplashScreen 
-is invoked via a SplashRunspace.PowerShell.EndInvoke() after the splash screen has closed and the Handle.IsCompeleted 
-property is true. The SplashRunspace.PowerShell property is disposed and the $Script:SplashRunspace variable is
-reset to $Null. When you create a New SplashRunspace object you must pass the Name of the SplashRunspace.HashTable
+is invoked via a SplashRunspace.PowerShell.EndInvoke() after the splash screen has closed.
+The SplashRunspace.PowerShell property is disposed and the $Script:SplashRunspace variable is reset to $Null.
+When you create a New SplashRunspace object you must pass the Name of the SplashRunspace.HashTable
 in the associated splash screen script.
 #>
 Class SplashRunspace {
@@ -103,8 +107,8 @@ Class SplashRunspace {
 		$This.HashTable.SplashIsLoaded = 0
 		$This.HashTable.ProgressValue = 0
 		$This.HashTable.MaxValue = 100 # Max Percentage
-		$This.HashTable.ProgressMessage = 'Starting...'
 		$This.HashTable.TotalWeight = 0
+		$This.HashTable.ProgressMessage = 'Starting...'
 		$This.Powershell = [PowerShell]::Create()
 		$This.Powershell.Runspace = [RunspaceFactory]::CreateRunspace()
 		$This.Powershell.Runspace.Open()
@@ -135,47 +139,15 @@ Function Invoke-Ternary {
 		[Parameter(Mandatory, Position=2)]$IfFalse)
 
 	# If condition is a scriptblock, evaluate it
-	$condResult = if ($Condition -is [scriptblock]){& $Condition}else{$Condition}
+	$condResult = if($Condition -is [scriptblock]){& $Condition}else{$Condition}
 
-	if ($condResult){
-		if ($IfTrue -is [scriptblock]){& $IfTrue}else{$IfTrue}
+	if($condResult){
+		if($IfTrue -is [scriptblock]){& $IfTrue}else{$IfTrue}
 	} else {
-		if ($IfFalse -is [scriptblock]){& $IfFalse}else{$IfFalse}
+		if($IfFalse -is [scriptblock]){& $IfFalse}else{$IfFalse}
 	}
 }
 Set-Alias -Name ?: -Value Invoke-Ternary
-
-<#
-.NOTES
-	Name:	Function Update-Splash
-	Version:	1.0 - 2025/11/29
-	Author:		Randy Turner
-	Email:		turner.randy21@yahoo.com
-	Created:	2025/11/29
-.SYNOPSIS
-	Function to update splash Message & ProgressBar.Value.
-	The ProgressBar.Value Total may be reset to zero by
-	calling this method without parameters.
-.PARAMETER Message Alias: M
-	Progress Message Text.
-.PARAMETER Weight Alias: W
-	ProgressBar.Value Incremental Value.
-#>
-Function Update-Splash{
-[CmdletBinding()]
-	param(
-		[Parameter()][String]$Message=$null,
-		[Parameter()][Int]$Weight=0,
-		[Parameter()][Switch]$ShowWeights)
-	
-		$SplashRunspace.HashTable.TotalWeight += $Weight
-		$SplashRunspace.HashTable.ProgressMessage = $Message
-		$SplashRunspace.HashTable.ProgressValue   = $SplashRunspace.HashTable.TotalWeight
-
-		if($ShowWeights){'TotalWeight: {0} Weight: {1}' -f $SplashRunspace.HashTable.TotalWeight, $Weight}
-		if($SplashRunspace.HashTable.TotalWeight -eq $SplashRunspace.HashTable.MaxValue){$SplashRunspace.HashTable.TotalWeight = 0}
-		Start-Sleep -Seconds 5
-}
 
 <#
 .NOTES
@@ -187,7 +159,7 @@ Email:   turner.randy21@yahoo.com
 -------------------------------------
 .SYNOPSIS
 This function Displays a Splash Screen on a Background Thread.
-V2.5 includes a rewrite of SplashScript to support 2 modes and flatten
+V2.5 includes a rewrite of SplashScript to support 3 modes and flatten
 logic to reduce cognative load, easeing maintainance.
 ----------------------------------------------------------------------------------------
 .DESCRIPTION
@@ -199,41 +171,41 @@ When the ProgressBar is started in Marquee style, it switches to Continuous styl
 once progress values appear like a Windows OS ProgressBar.
 This Script is compatible with Powershell 5.1+.
 This function communicates with the background thread via a synchronized hash table
-stored in the SplashRunspace object. This allows Update‑Splash and Close‑SplashScreen
-to interact with the UI safely.”
+stored in the SplashRunspace object. This allows Updateâ€‘Splash and Closeâ€‘SplashScreen
+to interact with the UI safely.â€
 ---------------------------------------------------------------------------------------- 
 .PARAMETER Config
-Required, This is a Custom PSObject used to pass parameter values.
+Required, This is a Custom PSObject, HashTable, or Dictionary used to pass parameter values.
 .EXAMPLE
 $cfgObj = [PsObject]@{
 	AppName    = 'SplashScreen Demo'
 	Image = $SSIcon 
-	FormBackColor = [Drawing.Color]::CornflowerBlue
+	FormBgColor = [Drawing.Color]::CornflowerBlue
 	Message = 'Initializing modules...'
 	ProgressBarStyle = [Windows.Forms.ProgressBarStyle]::Marquee
 }
 $CfgObj|Show-SplashScreen 
 Displays the Splash Screen using a PictureBox
 #>
-Function Show-SplashScreen {
+Function Show-SplashScreen{
 param([Parameter(ValueFromPipeline,Mandatory)][PSObject]$Config)
 
 begin {
-		if ($null -ne $Script:SplashRunspace) {return}
+		if($null -ne $Script:SplashRunspace){return}
 	}
 process {
-	$Image         = $Config.Image # Required Parameter
-	$Mode          = ?: ($Null -ne $Config.Mode) {$Config.Mode} 'Legacy'
-	$AppName       = ?: ($Null -ne $Config.AppName) {$Config.AppName} 'Application'
-	$FormBackColor = ?: ($Config.FormBackColor) $Config.FormBackColor ([Drawing.SystemColors]::Control)
-	$PicBackColor  = ?: ($Null -ne $Config.PicBackColor) {$Config.PicBackColor} ([Drawing.SystemColors]::Control)
-	$PbSizeMode    = ?: ($Null -ne $Config.PbSizeMode) {$Config.PbSizeMode} ([Windows.Forms.PictureBoxSizeMode]::Zoom)
-	$BGILayout     = ?: ($Null -ne $Config.BGILayout) {$Config.BGILayout} ([Windows.Forms.ImageLayout]::Zoom)
-	$Message       = ?: ($Null -ne $Config.Message) {$Config.Message} {('{0} Loading, Please Wait ...' -f $AppName)}
-	$ProgressBarForeColor = ?: ($Null -ne $Config.ProgressBarForeColor) {$Config.ProgressBarForeColor} {[Drawing.SystemColors]::Highlight}
-	$ProgressBarBackColor = ?: ($Null -ne $Config.ProgressBarBackColor) {$Config.ProgressBarBackColor} {[Drawing.SystemColors]::Control}
+	$Image       = $Config.Image # Required Parameter
+	$Mode        = ?: ($Null -ne $Config.Mode) {$Config.Mode} 'Legacy'
+	$AppName     = ?: ($Null -ne $Config.AppName) {$Config.AppName} 'Application'
+	$FormBgColor = ?: ($Config.FormBgColor) {$Config.FormBgColor} ([Drawing.SystemColors]::Control)
+	$PicBgColor  = ?: ($Null -ne $Config.PicBgColor) {$Config.PicBgColor} ([Drawing.SystemColors]::Control)
+	$PbxSizeMode = ?: ($Null -ne $Config.PbxSizeMode) {$Config.PbxSizeMode} ([Windows.Forms.PictureBoxSizeMode]::Zoom)
+	$BGILayout   = ?: ($Null -ne $Config.BGILayout) {$Config.BGILayout} ([Windows.Forms.ImageLayout]::Zoom)
+	$Message     = ?: ($Null -ne $Config.Message) {$Config.Message} ('{0} Loading, Please Wait ...' -f $AppName)
+	$ProgressBarFgColor = ?: ($Null -ne $Config.ProgressBarFgColor) {$Config.ProgressBarFgColor} ([Drawing.SystemColors]::Highlight)
+	$ProgressBarBgColor = ?: ($Null -ne $Config.ProgressBarBgColor) {$Config.ProgressBarBgColor} ([Drawing.SystemColors]::Control)
 	$BgImage = $Config.BgImage
-	$ShowPbText = $Config.ShowPbText
+	$ShowProgressText = $Config.ShowProgressText
 
 	if(-not $Image){throw 'Image is required in Config object.'}
 
@@ -243,18 +215,19 @@ $SplashScript = {
 		[Parameter(Mandatory)][Drawing.Image]$Image,
 		[Parameter()][String]$AppName = 'Application',
 		[Parameter()][String]$Message = $Message,
-		[Parameter()][Drawing.Color]$FormBackColor = [Drawing.SystemColors]::Control,
-		[Parameter()][Drawing.Color]$PicBackColor = [Drawing.SystemColors]::Control,
-		[Parameter()][Windows.Forms.PictureBoxSizeMode]$PbSizeMode = [Windows.Forms.PictureBoxSizeMode]::Zoom,
+		[Parameter()][Drawing.Color]$FormBgColor = [Drawing.SystemColors]::Control,
+		[Parameter()][Drawing.Color]$PicBgColor = [Drawing.SystemColors]::Control,
+		[Parameter()][Windows.Forms.PictureBoxSizeMode]$PbxSizeMode = [Windows.Forms.PictureBoxSizeMode]::Zoom,
 		[Parameter()][Windows.Forms.ImageLayout]$BGILayout = [Windows.Forms.ImageLayout]::Zoom,
-		[Parameter()][Drawing.Color]$ProgressBarForeColor = [Drawing.SystemColors]::Highlight,
-		[Parameter()][Drawing.Color]$ProgressBarBackColor = [Drawing.SystemColors]::Control,
+		[Parameter()][Drawing.Color]$ProgressBarFgColor = [Drawing.SystemColors]::Highlight,
+		[Parameter()][Drawing.Color]$ProgressBarBgColor = [Drawing.SystemColors]::Control,
 		[Parameter()][Switch]$BgImage,
-		[Parameter()][Switch]$ShowPbText)
+		[Parameter()][Switch]$ShowProgressText,
+		[Parameter()][Switch]$UseVisualStyles)
 
 	# Ensure WinForms + visual styles are initialized for ALL hosts (console, ISE, VSCode)
 	Add-Type -AssemblyName System.Windows.Forms
-	[Windows.Forms.Application]::EnableVisualStyles()
+	if($Mode -eq 'Marquee' -or $UseVisualStyles){[Windows.Forms.Application]::EnableVisualStyles()}
 
 	Function New-Splash{       
 		# --- Form + Controls
@@ -266,32 +239,32 @@ $SplashScript = {
 			PSCoreFont  = [Drawing.Font]::New('Segoe UI',9,[Drawing.FontStyle]::Regular)
 			Timer       = [Windows.Forms.Timer]::New()
 			SharedWidth = 0
-			PicBox      = $null}
+			Pbx = $null}
 
 		#region --- Splash
 		$UI.Splash.Size            = [Drawing.Size]::New(475,325)
 		$UI.Splash.StartPosition   = [Windows.Forms.FormStartPosition]::CenterScreen
 		$UI.Splash.Font            = [Drawing.Font]::New('Arial',12,[Drawing.FontStyle]::Regular)
-		$UI.Splash.BackColor       = $FormBackColor
+		$UI.Splash.BackColor       = $FormBgColor
 		$UI.Splash.FormBorderStyle = [Windows.Forms.BorderStyle]::None
 		$UI.Splash.ShowInTaskbar   = $False
 		$UI.SharedWidth = $UI.Splash.Width - 25
 		#endregion
 
 		#region --- ProgressBar
-		$UI.ProgressBar.ForeColor = $ProgressBarForeColor
-		$UI.ProgressBar.BackColor = $ProgressBarBackColor
+		$UI.ProgressBar.ForeColor = $ProgressBarFgColor
+		$UI.ProgressBar.BackColor = $ProgressBarBgColor
 		$UI.ProgressBar.Parent    = $UI.Splash
 		$UI.ProgressBar.Minimum   = 0
 		$UI.ProgressBar.Maximum   = $SyncHash.MaxValue
 		$UI.ProgressBar.Visible   = $True
-		$UI.ProgressBar.Size      = [Drawing.Size]::New($UI.SharedWidth,20)
+		$UI.ProgressBar.Size      = [Drawing.Size]::New($UI.SharedWidth,20)		
 		$UI.ProgressBar.Location  = [Drawing.Point]::New(13,$UI.Splash.Height - ($UI.ProgressBar.Height + 10))
 		$UI.ProgressBar.Style     = [Windows.Forms.ProgressBarStyle]::Continuous
 		#endregion
 
 		#region --- Progress Label
-		if($ShowPbText){
+		if($ShowProgressText){
 			$UI.PbMsg.Parent      = $UI.Splash
 			$UI.PbMsg.Size        = [Drawing.Size]::New(35,20)
 			$UI.PbMsg.Location    = $UI.ProgressBar.Location
@@ -320,31 +293,29 @@ $SplashScript = {
 
 		#region --- Image / PictureBox
 		if ($BgImage) {
-			$UI.Splash.BackgroundImage       = $Image
+			$UI.Splash.BackgroundImage = $Image
 			$UI.Splash.BackgroundImageLayout = $BGILayout
 		}
 		else {
-			$UI.PicBox = [Windows.Forms.PictureBox]::New()
-			$UI.PicBox.Parent      = $UI.Splash
-			$UI.PicBox.Location    = [Drawing.Point]::New(13,13)
-			$UI.PicBox.Size        = [Drawing.Size]::New($UI.SharedWidth,$UI.LblMsg.Top - 15)
-			$UI.PicBox.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
-			$UI.PicBox.Image       = $Image
-			$UI.PicBox.Visible     = $True
-			$UI.PicBox.BackColor   = $PicBackColor
-			$UI.PicBox.SizeMode    = $PbSizeMode
-			if($PbSizeMode -eq [Windows.Forms.PictureBoxSizeMode]::AutoSize){
-				$UI.PicBox.Left = ($UI.Splash.Width - $UI.PicBox.Width)/2
-				$UI.PicBox.Top  = ($UI.LblMsg.Top - $UI.PicBox.Height)/2
+			$UI.Pbx = [Windows.Forms.PictureBox]::New()
+			$UI.Pbx.Parent      = $UI.Splash
+			$UI.Pbx.Location    = [Drawing.Point]::New(13,13)
+			$UI.Pbx.Size        = [Drawing.Size]::New($UI.SharedWidth,$UI.LblMsg.Top - 15)
+			$UI.Pbx.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
+			$UI.Pbx.Image       = $Image
+			$UI.Pbx.Visible     = $True
+			$UI.Pbx.BackColor   = $PicBgColor
+			$UI.Pbx.SizeMode    = $PbxSizeMode
+			if($PbxSizeMode -eq [Windows.Forms.PictureBoxSizeMode]::AutoSize){
+				$UI.Pbx.Left = ($UI.Splash.Width - $UI.Pbx.Width)/2
+				$UI.Pbx.Top  = ($UI.LblMsg.Top - $UI.Pbx.Height)/2
 			}
 		}
 		#endregion
-
 		return $UI 
 	}
 
 	Function Invoke-Timer{
-		# --- Timer ------------
 		$UI.Timer.Interval = 500
 		$Timer_Tick = {
 			if ($SyncHash.Flag -eq $false){
@@ -359,16 +330,13 @@ $SplashScript = {
 						$UI.ProgressBar.Value = $UI.ProgressBar.Minimum
 					}
 					$UI.ProgressBar.Value++
-					$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
 					$UI.ProgressBar.Refresh()
 					$UI.LblMsg.Text = $Message 
 				}
 				'Marquee' {
-					[Windows.Forms.Application]::EnableVisualStyles()
 					$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Marquee
 					$UI.ProgressBar.MarqueeAnimationSpeed = -1
-
-					 # Only update message AFTER first Update-Splash call
+					# Only update message AFTER first Update-Splash call
 					if ($SyncHash.ProgressValue -gt 0) {
 						$UI.LblMsg.Text = $SyncHash.ProgressMessage
 					}
@@ -378,9 +346,8 @@ $SplashScript = {
 					if ($SyncHash.ProgressValue -ge $UI.ProgressBar.Minimum -and
 						$SyncHash.ProgressValue -le $UI.ProgressBar.Maximum){
 						$UI.ProgressBar.Value = $SyncHash.ProgressValue
-						$UI.ProgressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
 						$UI.ProgressBar.Refresh()
-						if($ShowPbText){
+						if($ShowProgressText){
 							$UI.PbMsg.Text = '{0}%' -f $UI.ProgressBar.Value
 						}
 					}
@@ -407,7 +374,7 @@ $SplashScript = {
 
 		$Splash_MouseDown = {
 			if ($_.Button -eq [Windows.Forms.MouseButtons]::Left){
-				[Win32]::ReleaseCapture() | Out-Null
+				[Win32]::ReleaseCapture()
 				[Win32]::SendMessage($UI.Splash.Handle,$WM_NCLBUTTONDOWN,$HTCAPTION,0)
 			}
 		}
@@ -424,15 +391,13 @@ $SplashScript = {
 			# Force handle creation BEFORE starting the timer
 			$UI.Splash.CreateControl()
 			$UI.ProgressBar.CreateControl()
-
 			# Start the timer AFTER the handle exists
 			$UI.Timer.Start()
-
 			# Prime the message pump (important for console hosts)
 			[Windows.Forms.Application]::DoEvents()
 		})
 
-		$UI.Splash.Add_Load({ $This.WindowState = $InitialFormWindowState })
+		$UI.Splash.Add_Load({$This.WindowState = $InitialFormWindowState})
 
 		$SyncHash.SplashIsLoaded++
 		$UI.Splash.ShowDialog()     
@@ -467,7 +432,6 @@ public class Win32 {
 		}
 	}
 }
-
 	# --- Set SplashRunspace Parameters & Invoke ---
 	$Script:SplashRunspace = [SplashRunspace]::New('SyncHash')
 	[void]$SplashRunspace.Powershell.AddScript($SplashScript)
@@ -475,18 +439,51 @@ public class Win32 {
 	[void]$SplashRunspace.Powershell.AddParameter('AppName',$AppName)
 	[void]$SplashRunspace.Powershell.AddParameter('Message',$Message)
 	[void]$SplashRunspace.Powershell.AddParameter('Image',$Image)
-	[void]$SplashRunspace.Powershell.AddParameter('FormBackColor',$FormBackColor)
-	[void]$SplashRunspace.Powershell.AddParameter('PicBackColor',$PicBackColor)
-	[void]$SplashRunspace.Powershell.AddParameter('PbSizeMode',$PbSizeMode)
-	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarForeColor',$ProgressBarForeColor)
-	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarBackColor',$ProgressBarBackColor)
-	if($ShowPbText){[void]$SplashRunspace.Powershell.AddParameter('ShowPbText')}
+	[void]$SplashRunspace.Powershell.AddParameter('FormBgColor',$FormBgColor)
+	[void]$SplashRunspace.Powershell.AddParameter('PicBgColor',$PicBgColor)
+	[void]$SplashRunspace.Powershell.AddParameter('PbxSizeMode',$PbxSizeMode)
+	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarFgColor',$ProgressBarFgColor)
+	[void]$SplashRunspace.Powershell.AddParameter('ProgressBarBgColor',$ProgressBarBgColor)
+	if($ShowProgressText){[void]$SplashRunspace.Powershell.AddParameter('ShowProgressText')}
+	if($UseVisualStyles){[void]$SplashRunspace.Powershell.AddParameter('UseVisualStyles')}
 	if($BgImage){
 	    [void]$SplashRunspace.Powershell.AddParameter('BgImage')
 	    [void]$SplashRunspace.Powershell.AddParameter('BgiLayout',$BGILayout)
 	}
 	$SplashRunspace.Handle = $SplashRunspace.PowerShell.BeginInvoke()
 	}
+}
+
+<#
+.NOTES
+	Name: Function Update-Splash
+	Version: 1.0 - 2025/11/29
+	Author:  Randy Turner
+	Email:   turner.randy21@yahoo.com
+	Created: 2025/11/29
+.SYNOPSIS
+	Function to update splash Message & ProgressBar.Value.
+.PARAMETER Message Alias: M
+	Progress Message Text.
+.PARAMETER Weight Alias: W
+	ProgressBar.Value Incremental Value.
+.PARAMETER ShowWeights
+	Optional, switch enables Weight output
+#>
+Function Update-Splash{
+[CmdletBinding()]
+	param(
+		[Parameter()][String]$Message=$null,
+		[Parameter()][Int]$Weight=0,
+		[Parameter()][Switch]$ShowWeights)
+	
+		$SplashRunspace.HashTable.TotalWeight += $Weight
+		$SplashRunspace.HashTable.ProgressMessage = $Message
+		$SplashRunspace.HashTable.ProgressValue   = $SplashRunspace.HashTable.TotalWeight
+
+		if($ShowWeights){'TotalWeight: {0} Weight: {1}' -f $SplashRunspace.HashTable.TotalWeight, $Weight}
+		if($SplashRunspace.HashTable.TotalWeight -eq $SplashRunspace.HashTable.MaxValue){$SplashRunspace.HashTable.TotalWeight = 0}
+		Start-Sleep -Seconds 5
 }
 
 <#
@@ -500,21 +497,16 @@ Email:   turner.randy21@yahoo.com
 
 .SYNOPSIS
 This function Closes a Splash Screen on a Background Thread & Disposes of the Thread.
-----------------------------------------------------------------------------------------
-.DESCRIPTION
-This function Closes a Splash Screen 
----------------------------------------------------------------------------------------- 
+-------------------------------------------------------------------------------------
 .EXAMPLE
 Close-SplashScreen
 Closes the Splash Screen
 #>
 Function Close-SplashScreen{
 	$SplashRunspace.HashTable.Flag = $False  # Signal close
-
-	# Always wait for the runspace to finish
+	#Always wait for the runspace to finish
 	$SplashRunspace.PowerShell.EndInvoke($SplashRunspace.Handle)
-
-	# Clean up
+	#Clean up
 	$SplashRunspace.PowerShell.Dispose()
 	$Script:SplashRunspace = $Null
 }
@@ -547,23 +539,24 @@ Function Start-Demo {
 			@{Name = 'Finalizing startup';    Weight = 20}
 		)
 	)
-
 	# Confugure splash
 	$Config = [PSCustomObject]@{
 	AppName = ?: ($Mode -ne 'Legacy') 'SplashScreen Demo' {$Null}
 	Mode = $Mode
 	Image = $SSIcon
-	ShowPbText = $ShowPbText
-	FormBackColor = [Drawing.Color]::CornflowerBlue
+	ShowProgressText = $ShowProgressText
+	FormBgColor = [Drawing.Color]::CornflowerBlue
 	BgImage = $BgImage
 	BgiLayout = $BGILayout
 	ImageSize = $ImageSize
-	PbSizeMode = $PbSizeMode
-	#Message = 'Initializing modules...X'
+	PbxSizeMode = $PbxSizeMode
+	UseVisualStyles = $UseVisualStyles
+	#Message = 'Initializing modules...'
 	#Uncomment to Override Powershell Defaults
-	#ProgressBarForeColor = [Drawing.Color]::LimeGreen
-	#ProgressBarBackColor = [Drawing.Color]::ForestGreen
-	#The ISE defaults to Windows animated Green with Yellow flashes.
+	#ProgressBarFgColor = [Drawing.Color]::LimeGreen
+	#ProgressBarBgColor = [Drawing.Color]::ForestGreen
+	#The ISE defaults to Windows animated Green with Yellow flashes,
+	#This is the same effect as UseVisualStyles.
 }
 
 	# Show splash

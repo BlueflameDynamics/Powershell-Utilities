@@ -1131,7 +1131,8 @@ function Show-MainForm{
         $SplashCfg = @{
             AppName = $App.Name
             Image   = ([BlueflameDynamics.IconTools]::ExtractIcon($DLL,[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),$IconSize.Splash))
-            FormBackColor = ([Drawing.Color]::GhostWhite)
+            FormBgColor = ([Drawing.Color]::GhostWhite)
+            PbxSizeMode = [System.Windows.Forms.PictureBoxSizeMode]$PbxSizeMode=[Windows.Forms.PictureBoxSizeMode]::CenterImage
             }
 		Import-Module -Name .\SplashScreen.ps1 -Force
 		$SplashCfg | Show-SplashScreen 
