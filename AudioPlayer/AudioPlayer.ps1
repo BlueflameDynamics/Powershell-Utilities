@@ -2,11 +2,12 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 2.0 - 02/05/2026
+Version: 2.1 - 2026/02/25
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
 Revision History:
+V2.1 - 2026/02/25 - Added After Selection AutoClose option.
 V2.0 - 2026/02/05 - Changed Registry Library
 v1.0 - 2016/04/01 - Original Release
 
@@ -144,7 +145,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.0 - 2026/02/05'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.1 - 2026/02/25'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -153,9 +154,8 @@ $PlayListHeader = '*-<{0} - Playlist Header>-*' -f $App.Name
 $Disabled = '{0} Disabled, During Current Operation'
 $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wma')
 $LvwColumnWidths = @($IconSize.SmIco,$AutoSize,$AutoSize)
-$HelpFont = @()
 $RegKeys = [Enum]::GetNames([RegistryKey])
-#$RegKeys[[RegistryKey]::Default] = '({0})' -f $RegKeys[[RegistryKey]::Default]
+$HelpFont = @()
 #endregion
 
 #region BinaryPairs
@@ -502,7 +502,8 @@ function Invoke-AudioFile{
 		[Windows.Forms.Application]::DoEvents()
 		if($PausePlayback -eq $True){$MediaPlayer.Pause()}
 	}
-	Until($MediaPlayer.Position -eq $MediaPlayer.NaturalDuration.TimeSpan -or $StopPlayback -eq $True)
+	Until($MediaPlayer.Position -eq $MediaPlayer.NaturalDuration.TimeSpan -or $StopPlayback)
+	if($CheckBoxes[[CheckboxID]::AfterSelected]){$StopPlayback = $True}
 	$LblPosition.Text = & $Get_Position
 	[Windows.Forms.Application]::DoEvents()
 	$MediaPlayer.Stop()
@@ -510,32 +511,35 @@ function Invoke-AudioFile{
 }
 
 function Invoke-Playlist{
-if($LvwSortEnabled -eq $False){
-	Show-MessageBox -M ($Disabled -f 'Play') -T $Form1.Text -Icon Warning}
-else{
-	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Disable
-	$Script:PausePlayback = `
-	$Script:StopPlayback = $False
-
-	for($C=$ListView1.SelectedItems[0].Index;$C -lt $ListView1.Items.Count;$C++){
-		$ListView1.Items[$C].Selected = `
-		$ListView1.Items[$C].Focused = $True
-		$ListView1.Items[$C].EnsureVisible()
-		$LblStatus.Text = 'Now Playing:  {0}' -f $ListView1.SelectedItems[0].Subitems[[LvwColumn]::File].Text
-		Invoke-AudioFile -Path $ListView1.Items[$C].Text
-		if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
-		#Loopback Control
-		if($CheckBoxes[[CheckboxID]::Loop].Checked -and $C -eq $ListView1.Items.Count-1){
-			if($AutoClose){
-				Invoke-Command -ScriptBlock $Exit_Click
-				break}
-			$C = -1}
+	if($LvwSortEnabled -eq $False){
+		Show-MessageBox -M ($Disabled -f 'Play') -T $Form1.Text -Icon Warning}
+	else{
+		$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Disable
+		$Script:PausePlayback = `
+		$Script:StopPlayback = $False
+		for($C=$ListView1.SelectedItems[0].Index;$C -lt $ListView1.Items.Count;$C++){
+			$ListView1.Items[$C].Selected = `
+			$ListView1.Items[$C].Focused = $True
+			$ListView1.Items[$C].EnsureVisible()
+			$LblStatus.Text = 'Now Playing:  {0}' -f $ListView1.SelectedItems[0].Subitems[[LvwColumn]::File].Text
+			Invoke-AudioFile -Path $ListView1.Items[$C].Text
+			if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
+			#Loopback Control		
+			if($CheckBoxes[[CheckboxID]::Loop]){
+				# AutoClose, Last Item
+				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected])){
+					Invoke-Command -ScriptBlock $Exit_Click
+					break}
+				# End-of-list behavior
+				if(!$AutoClose -and $C -eq $ListView1.Items.Count -1){
+					$C = -1}
+			}
 		}
-	if($AutoClose)
-		{Invoke-Command -ScriptBlock $Exit_Click}
-	else
-		{Set-ButtonEnabledState -Mode StopClicked}
-	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Enable
+		if($AutoClose)
+			{Invoke-Command -ScriptBlock $Exit_Click}
+		else
+			{Set-ButtonEnabledState -Mode StopClicked}
+		$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Enable
 	}
 }
 
@@ -645,7 +649,7 @@ function Show-MainForm{
 	$ChkMini = [Windows.Forms.Checkbox]::New()
 	$InitialFormWindowState = [Windows.Forms.FormWindowState]::Normal
 	# Control Arrays
-	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 3
+	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 4
 	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
 	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
@@ -889,10 +893,10 @@ function Show-MainForm{
 	$LblVolume.Name = 'LblVolume'
 	$LblVolume.Parent = $Panel1
 	$LblVolume.Font = [Drawing.Font]::new('Segoe UI',22,([Drawing.FontStyle]::Regular))
-	$LblVolume.Location = [Drawing.Point]::New(160,40)
+	$LblVolume.Location = [Drawing.Point]::New(252,40)
 	$LblVolume.BorderStyle = [Windows.Forms.BorderStyle]::None
 	$LblVolume.Text = 'Vol: {0}' -f [Int]([Audio]::Volume*100)
-	$LblVolume.Width = 120
+	$LblVolume.Width = 117
 	$LblVolume.Height = 45
 	$LblVolume.AutoEllipsis = $True
 	$LblVolume.Anchor = Get-Anchor -T -L
@@ -900,7 +904,7 @@ function Show-MainForm{
 	$LblTotalRuntime = [Windows.Forms.Label]::New()
 	$LblTotalRuntime.Name = 'LblTotRuntime'
 	$LblTotalRuntime.Parent = $Panel1
-	$LblTotalRuntime.Location = [Drawing.Point]::New(281,82)
+	$LblTotalRuntime.Location = [Drawing.Point]::New(($LblVolume.Right+2),82)
 	$LblTotalRuntime.BorderStyle = [Windows.Forms.BorderStyle]::Fixed3D
 	$LblTotalRuntime.BackColor = $CpColor
 	$LblTotalRuntime.Text = ''
@@ -912,7 +916,7 @@ function Show-MainForm{
 	#endregion 
 
 	#region Checkboxes
-	$CBT = @('Loop Playback','Auto Close','Recurse Directories Opening Playlist')
+	$CBT = @('Loop Playback','Auto Close','Recurse Directories Opening Playlist','After Selection')
 	for($C=0;$C -lt $CheckBoxes.Count;$C++){
 		$CheckBoxes[$C].Name = 'Chk'+[Enum]::GetName([CheckboxID],$C)
 		$CheckBoxes[$C].Parent = $Panel1
@@ -927,6 +931,10 @@ function Show-MainForm{
 	$CheckBoxes[[CheckboxID]::Loop].Add_CheckedChanged({$Script:LoopPlayback = !$Script:LoopPlayback})
 	$CheckBoxes[[CheckboxID]::AutoClose].Add_CheckedChanged({$Script:AutoClose = !$Script:AutoClose})
 	$CheckBoxes[[CheckboxID]::Recurse].Add_CheckedChanged({$Script:Recurse = !$Script:Recurse})
+	$CheckBoxes[[CheckboxID]::AutoClose].Width /= 3
+	$CheckBoxes[[CheckboxID]::AfterSelected].Width /= 2.5
+	$CheckBoxes[[CheckboxID]::AfterSelected].Location  = [Drawing.Point]::New(($CheckBoxes[[CheckboxID]::AutoClose].Width += 2),$CheckBoxes[[CheckboxID]::AutoClose].Top)
+	$CheckBoxes[[CheckboxID]::AfterSelected].BringToFront()
 	#endregion
 
 	#region LvwCtxMenuStrip
@@ -1128,12 +1136,12 @@ function Show-MainForm{
 	if($LockVolume){Invoke-Command -ScriptBlock $LockVolume_Click}
 	if($SaveSettings.IsPresent){Save-Settings}
 	if($PlayList.Length -gt 0){
-        $SplashCfg = @{
-            AppName = $App.Name
-            Image   = ([BlueflameDynamics.IconTools]::ExtractIcon($DLL,[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),$IconSize.Splash))
-            FormBgColor = ([Drawing.Color]::GhostWhite)
-            PbxSizeMode = [System.Windows.Forms.PictureBoxSizeMode]$PbxSizeMode=[Windows.Forms.PictureBoxSizeMode]::CenterImage
-            }
+		$SplashCfg = @{
+			AppName = $App.Name
+			Image   = ([BlueflameDynamics.IconTools]::ExtractIcon($DLL,[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),$IconSize.Splash))
+			FormBgColor = ([Drawing.Color]::GhostWhite)
+			PbxSizeMode = [System.Windows.Forms.PictureBoxSizeMode]$PbxSizeMode=[Windows.Forms.PictureBoxSizeMode]::CenterImage
+			}
 		Import-Module -Name .\SplashScreen.ps1 -Force
 		$SplashCfg | Show-SplashScreen 
 		Open-Playlist -NP
