@@ -734,6 +734,7 @@ function Show-MainForm{
 		else{
 			$Form1.MinimumSize = $FormSize.Min
 			$Form1.Size = $FormSize.Base}
+        $PicIcon.Visible = !$ChkMini.Checked
 		RepositionTo-CenterScreen -Form $Form1
 	}
 
@@ -771,7 +772,7 @@ function Show-MainForm{
 		[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),
 		$IconSize.Form)
 	$Form1.Size = [Drawing.Size]::New(800,510)
-	$FormSize.Mini = [Drawing.Size]::New(($Form1.Size.Width*0.8875),($Form1.Size.Height*0.4588))
+	$FormSize.Mini = [Drawing.Size]::New(($Form1.Size.Width*0.92),($Form1.Size.Height*0.4588))
  	$FormSize.Min = `
 	$Form1.MinimumSize = [Drawing.Size]::New(710,410)
 	$Form1.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
@@ -932,7 +933,7 @@ function Show-MainForm{
 	$CheckBoxes[[CheckboxID]::AutoClose].Add_CheckedChanged({$Script:AutoClose = !$Script:AutoClose})
 	$CheckBoxes[[CheckboxID]::Recurse].Add_CheckedChanged({$Script:Recurse = !$Script:Recurse})
 	$CheckBoxes[[CheckboxID]::AutoClose].Width /= 3
-	$CheckBoxes[[CheckboxID]::AfterSelected].Width /= 2.5
+	$CheckBoxes[[CheckboxID]::AfterSelected].Width /= 2.25
 	$CheckBoxes[[CheckboxID]::AfterSelected].Location  = [Drawing.Point]::New(($CheckBoxes[[CheckboxID]::AutoClose].Width += 2),$CheckBoxes[[CheckboxID]::AutoClose].Top)
 	$CheckBoxes[[CheckboxID]::AfterSelected].BringToFront()
 	#endregion
