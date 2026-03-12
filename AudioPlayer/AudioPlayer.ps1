@@ -984,7 +984,7 @@ function Show-MainForm{
 	$ListView1.MultiSelect = $False
 	$ListView1.GridLines = `
 	$ListView1.FullRowSelect = $True
-	$ListView1.Size = [Drawing.Size]::New(($Form1.Width - 42),($Form1.Height - 235))
+	$ListView1.Size = [Drawing.Size]::New(($Form1.Width - 40),($Form1.Height - 235))
 	$ListView1.Location = [Drawing.Point]::New(13,28)
 	if($Null -ne $RegistrySettings.MainLvwFont){
 		$FontName  = $RegistrySettings.MainLvwFont.Name
