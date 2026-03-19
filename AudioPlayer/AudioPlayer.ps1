@@ -503,7 +503,6 @@ function Invoke-AudioFile{
 		if($PausePlayback -eq $True){$MediaPlayer.Pause()}
 	}
 	Until($MediaPlayer.Position -eq $MediaPlayer.NaturalDuration.TimeSpan -or $StopPlayback)
-	if($CheckBoxes[[CheckboxID]::AfterSelected]){$StopPlayback = $True}
 	$LblPosition.Text = & $Get_Position
 	[Windows.Forms.Application]::DoEvents()
 	$MediaPlayer.Stop()
@@ -527,7 +526,7 @@ function Invoke-Playlist{
 			#Loopback Control		
 			if($CheckBoxes[[CheckboxID]::Loop]){
 				# AutoClose, Last Item
-				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected])){
+				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked)){
 					Invoke-Command -ScriptBlock $Exit_Click
 					break}
 				# End-of-list behavior
@@ -734,7 +733,7 @@ function Show-MainForm{
 		else{
 			$Form1.MinimumSize = $FormSize.Min
 			$Form1.Size = $FormSize.Base}
-        $PicIcon.Visible = !$ChkMini.Checked
+		$PicIcon.Visible = !$ChkMini.Checked
 		RepositionTo-CenterScreen -Form $Form1
 	}
 
@@ -1057,7 +1056,7 @@ function Show-MainForm{
 	$ChkMini.Name = 'ChkMini'
 	$ChkMini.Parent = $Form1
 	$ChkMini.Anchor = Get-Anchor -B -L
-	$ChkMini.Location = [Drawing.Point]::New(20,($Panel1.Bottom + 10))
+	$ChkMini.Location = [Drawing.Point]::New(18,($Panel1.Bottom + 10))
 	$ChkMini.Width = 250
 	$ChkMini.Text = 'Enable Mini Mode'
 	$ChkMini.Enabled = $True
