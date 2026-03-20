@@ -921,8 +921,8 @@ function Show-MainForm{
 		$CheckBoxes[$C].Name = 'Chk'+[Enum]::GetName([CheckboxID],$C)
 		$CheckBoxes[$C].Parent = $Panel1
 		$CheckBoxes[$C].Anchor = Get-Anchor -T -L
-		$CheckBoxes[$C].Width = 250
-		$CheckBoxes[$C].Location = [Drawing.Point]::New(5,$($LblPosition.Bottom+(($CheckBoxes[$C].Height*$C)*.8)))
+		$CheckBoxes[$C].AutoSize = $True
+		$CheckBoxes[$C].Location = [Drawing.Point]::New(5,$($LblPosition.Bottom+(($CheckBoxes[$C].Height*$C)*1.25)))
 		$CheckBoxes[$C].Text = $CBT[$C]
 	}
 	$CheckBoxes[[CheckboxID]::Loop].Checked = $LoopPlayback
@@ -931,9 +931,7 @@ function Show-MainForm{
 	$CheckBoxes[[CheckboxID]::Loop].Add_CheckedChanged({$Script:LoopPlayback = !$Script:LoopPlayback})
 	$CheckBoxes[[CheckboxID]::AutoClose].Add_CheckedChanged({$Script:AutoClose = !$Script:AutoClose})
 	$CheckBoxes[[CheckboxID]::Recurse].Add_CheckedChanged({$Script:Recurse = !$Script:Recurse})
-	$CheckBoxes[[CheckboxID]::AutoClose].Width /= 3
-	$CheckBoxes[[CheckboxID]::AfterSelected].Width /= 2.25
-	$CheckBoxes[[CheckboxID]::AfterSelected].Location  = [Drawing.Point]::New(($CheckBoxes[[CheckboxID]::AutoClose].Width += 2),$CheckBoxes[[CheckboxID]::AutoClose].Top)
+	$CheckBoxes[[CheckboxID]::AfterSelected].Location  = [Drawing.Point]::New(($CheckBoxes[[CheckboxID]::AutoClose].Width += 8),$CheckBoxes[[CheckboxID]::AutoClose].Top)
 	$CheckBoxes[[CheckboxID]::AfterSelected].BringToFront()
 	#endregion
 
@@ -1028,8 +1026,7 @@ function Show-MainForm{
 	$Slider.Parent = $Panel1
 	$Slider.TickStyle = [Windows.Forms.TickStyle]::Both
 	$Slider.AutoSize = $False
-	$Slider.Width = 300
-	$Slider.Height = 42
+	$Slider.Size = [Drawing.Size]::New(300,42)
 	$Slider.Minimum = $AudioVolume.Min
 	$Slider.Maximum = $AudioVolume.Max
 	$Slider.Value = $CVol
