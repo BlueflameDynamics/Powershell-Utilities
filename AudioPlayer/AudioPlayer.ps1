@@ -524,7 +524,7 @@ function Invoke-Playlist{
 			Invoke-AudioFile -Path $ListView1.Items[$C].Text
 			if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
 			#Loopback Control		
-			if($CheckBoxes[[CheckboxID]::Loop]){
+			if($CheckBoxes[[CheckboxID]::Loop].Checked){
 				# AutoClose, Last Item
 				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked)){
 					Invoke-Command -ScriptBlock $Exit_Click
