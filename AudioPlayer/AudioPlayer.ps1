@@ -858,8 +858,7 @@ function Show-MainForm{
 	$LblRuntime.BackColor = $CpColor = [Drawing.SystemColors]::Control
 	$LblRuntime.Text = ''
 	$LblRuntime.Font = $PSCoreFont
-	$LblRuntime.Height = 18
-	$LblRuntime.Width = 140
+	$LblRuntime.Size = [Drawing.Size]::New(140,18)
 	$LblRuntime.AutoEllipsis = $True
 	$LblRuntime.Anchor = Get-Anchor -T -L
 
@@ -871,8 +870,7 @@ function Show-MainForm{
 	$LblPosition.BackColor = $CpColor
 	$LblPosition.Text = ''
 	$LblPosition.Font = $PSCoreFont
-	$LblPosition.Height = $LblRuntime.Height
-	$LblPosition.Width = $LblRuntime.Width
+	$LblPosition.Size = [Drawing.Size]::New($LblRuntime.Width,$LblRuntime.Height)	
 	$LblPosition.AutoEllipsis = $True
 	$LblPosition.Anchor = Get-Anchor -T -L
 
@@ -884,8 +882,7 @@ function Show-MainForm{
 	$LblStatus.BackColor = $CpColor
 	$LblStatus.Text = ''
 	$LblStatus.Font = $PSCoreFont
-	$LblStatus.Width = $Panel1.Width - ($LblRuntime.Width+15)
-	$LblStatus.Height = $LblRuntime.Height
+	$LblStatus.Size = [Drawing.Size]::New($Panel1.Width - ($LblRuntime.Width+15),$LblRuntime.Height)
 	$LblStatus.AutoEllipsis = $True
 	$LblStatus.Anchor = Get-Anchor -T -L -R
 	
@@ -896,8 +893,7 @@ function Show-MainForm{
 	$LblVolume.Location = [Drawing.Point]::New(252,40)
 	$LblVolume.BorderStyle = [Windows.Forms.BorderStyle]::None
 	$LblVolume.Text = 'Vol: {0}' -f [Int]([Audio]::Volume*100)
-	$LblVolume.Width = 117
-	$LblVolume.Height = 45
+	$LblVolume.Size = [Drawing.Size]::New(117,45)
 	$LblVolume.AutoEllipsis = $True
 	$LblVolume.Anchor = Get-Anchor -T -L
 
@@ -909,8 +905,7 @@ function Show-MainForm{
 	$LblTotalRuntime.BackColor = $CpColor
 	$LblTotalRuntime.Text = ''
 	$LblTotalRuntime.Font = $PSCoreFont
-	$LblTotalRuntime.Height = $LblRuntime.Height
-	$LblTotalRuntime.Width = 300
+	$LblTotalRuntime.Size = [Drawing.Size]::New(300,$LblRuntime.Height)
 	$LblTotalRuntime.AutoEllipsis = $True
 	$LblTotalRuntime.Anchor = Get-Anchor -T -L 
 	#endregion 
@@ -1054,7 +1049,7 @@ function Show-MainForm{
 	$ChkMini.Parent = $Form1
 	$ChkMini.Anchor = Get-Anchor -B -L
 	$ChkMini.Location = [Drawing.Point]::New(18,($Panel1.Bottom + 10))
-	$ChkMini.Width = 250
+	$ChkMini.Width = 115
 	$ChkMini.Text = 'Enable Mini Mode'
 	$ChkMini.Enabled = $True
 	$ChkMini.Checked = $MiniMode
