@@ -493,11 +493,11 @@ function Invoke-AudioFile{
 	Do	{
 		$LblRuntime.Text = "Duration: [{0:$TimeFormat}]" -f $MediaPlayer.NaturalDuration.TimeSpan
 		$LblPosition.Text = & $Get_Position
-		if(([Audio]::Volume*100) -ne $Slider.Value){
+		if(([Audio]::Volume*$AudioVolume.Max) -ne $Slider.Value){
 			if($ToolMenuItems[[ToolMenuItem]::LockVolume].Checked){
-				[Audio]::Volume = $Slider.Value/100} #Enforce Volume Lock
+				[Audio]::Volume = $Slider.Value/$AudioVolume.Max} #Enforce Volume Lock
 			else{
-				$Slider.Value = [Int]([Audio]::Volume*100)} #Update Slider Value
+				$Slider.Value = [Int]([Audio]::Volume*$AudioVolume.Max)} #Update Slider Value
 		}
 		[Windows.Forms.Application]::DoEvents()
 		if($PausePlayback -eq $True){$MediaPlayer.Pause()}
@@ -1011,11 +1011,11 @@ function Show-MainForm{
 
 	#region Slider
 	$CVol = if($Volume -eq -1){
-				[Audio]::Volume*100}
+				[Audio]::Volume*$AudioVolume.Max}
 			else{
 				$Volume
-				[Audio]::Volume=$Volume/100
-				$LblVolume.Text = 'Vol: {0}' -f [Int]([Audio]::Volume*100)
+				[Audio]::Volume=$Volume/$AudioVolume.Max
+				$LblVolume.Text = 'Vol: {0}' -f [Int]([Audio]::Volume*$AudioVolume.Max)
 				}
 	$Slider.Name = 'VolumeSlider'
 	$Slider.Parent = $Panel1
