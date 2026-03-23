@@ -1,13 +1,14 @@
 <#
 .NOTES
 	File Name:	Create-PSListing.ps1
-	Version:	2.2 - 12/01/2025
+	Version:	2.3 - 03/23/2025
 	Requires:	Powershell V5+
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	03/08/2016
 	Based Upon: Copy-ToPrinter.ps1 by Karl Mitschke
 	Revision History:
+		v2.3 - 03/22/2026 - Added Ensure-MinimumLineNoWidth
 		v2.2 - 12/01/2025 - Added HTML Word-Wrap for long lines.
 							Minor Bug Fix in Token Report Parameter Passing
 		v2.1 - 11/20/2025 - Added Token Report Sort Options
@@ -150,29 +151,29 @@ $P = @(0,1,2)
 $P[0] = ($MyInvocation.MyCommand).Parameters
 $P[1] = $P[0]['Mode'].Attributes.ValidValues
 $P[2] = $P[0]['OutputTo'].Attributes.ValidValues
-$My = [PSCustomObject][Ordered]@{
+$My = [PSCustomObject]@{
 	Name = ($MyInvocation.MyCommand).Name
 	Params = $P[0]
 	Modes = $P[1]
 	Outputs = $P[2]
 	ModeIdx = [Array]::IndexOf($P[1],$Mode)
 	OutputIdx = [Array]::IndexOf($P[2],$OutputTo)}
-# HTML required for combined report
+#HTML required for combined report
 if($My.ModeIdx -eq [ModeOfOperation]::Both){$OutputTo = 'Html'} 
 RV -Name P
 #endregion
 
 #region Script Variables
-$AppVersion = '2.2'
+$AppVersion = '2.3'
 $psISEHost = 'Windows PowerShell ISE Host'
 $VSCodeHost = 'Visual Studio Code Host'
 $ReportName = 'Powershell Token Report'
 $MatchStr = '\.psm?1$'
 $RVStr = @('.psm*1','_Tokens.txt','\*$','','_Tokens.htm')
 $ErrMsg = @(' only supports .ps1 and .psm1 files',' requires a .ps1 or .psm1 input file')
-$LineNo = 1
-$LineNoFormat = -join('{0:',('0' * $LineNoWidth),'}<BR/>')
 $HtmlFont = -join('font-family:Consolas,Lucida Console; font-size:',$FontSize,'pt;')
+$LineNo = 1
+$LineNoFormat = ''
 $OutName = ''
 $ScriptName = ''
 $ScriptPath = ''
@@ -209,14 +210,8 @@ $TokenColors = @{
 #region Utility Functions
 function Expand-Tabs{
 param(
-	[Parameter(
-		Position = 0,
-		ValueFromPipeline,
-		Mandatory)][Alias('In')]
-		[String]$InputStr,
-	[Parameter(
-		Position = 1)][Alias('Tw')]
-		[UInt32]$TabWidth = 8)
+	[Parameter(Position = 0,ValueFromPipeline,Mandatory)][Alias('In')][String]$InputStr,
+	[Parameter(Position = 1)][Alias('Tw')][UInt32]$TabWidth = 8)
 
 $Block = ''
 $EOL = $False
@@ -236,18 +231,16 @@ return $Block
 }
 
 function Ensure-MinimumLineNoWidth{
-	param([Parameter(Position = 0, ValueFromPipeline, Mandatory)][Alias('In')][string]$InputStr)
+	param([Parameter(Position = 0,ValueFromPipeline,Mandatory)][Alias('In')][string]$InputStr)
 
-	# Split on any newline style
-	$Lines = $InputStr -split "\r?\n"
+	#Get Minimum Width
+	$MinWidth = ($InputStr -split "\r?\n").Length.ToString().Length
 
-	$RequiredWidth = $Lines.Length.ToString().Length
-
-	if ($Script:LineNoWidth -lt $RequiredWidth) {
-		$Script:LineNoWidth = $RequiredWidth
+	if ($Script:LineNoWidth -lt $MinWidth) {
+		$Script:LineNoWidth = $MinWidth
 	}
 
-	# Build format string like "{0:000}<BR/>"
+	#Build format string like '{0:000}<BR/>'
 	$Script:LineNoFormat = "{0:$('0' * $Script:LineNoWidth)}<BR/>"
 }
 
@@ -317,7 +310,7 @@ function Wrap-InputText {
 
 	$results = @()
 	$lineNo  = 1
-	# Aim for segments at least ~60% of MaxLength when possible
+	#Aim for segments at least ~60% of MaxLength when possible
 	$minSegment = [Math]::Max(10, [Math]::Floor($MaxLength * 0.6))
 
 	foreach ($line in ($Text -split "`r`n")) {
@@ -335,7 +328,7 @@ function Wrap-InputText {
 		while ($cursor -lt $line.Length) {
 			$remaining = $line.Length - $cursor
 
-			# If the remainder fits, take it in one go
+			#If the remainder fits, take it in one go
 			if ($remaining -le $MaxLength) {
 				$segment = $line.Substring($cursor, $remaining).TrimEnd()
 				$results += [PSCustomObject]@{
@@ -345,24 +338,24 @@ function Wrap-InputText {
 				break
 			}
 
-			# Take a slice of MaxLength and try to break on the last space within it
+			#Take a slice of MaxLength and try to break on the last space within it
 			$sliceLen = $MaxLength
 			$slice    = $line.Substring($cursor, $sliceLen)
 			$lastSpaceInSlice = $slice.LastIndexOf(' ')
 
 			if ($lastSpaceInSlice -ge $minSegment) {
-				# Good break point within slice
+				#Good break point within slice
 				$breakAt = $lastSpaceInSlice
 			}
 			else {
-				# Look ahead: find the next space after MaxLength to avoid a short first segment
+				#Look ahead: find the next space after MaxLength to avoid a short first segment
 				$rest     = $line.Substring($cursor + $sliceLen)
 				$nextSpace = $rest.IndexOf(' ')
 				if ($nextSpace -ge 0 -and ($sliceLen + $nextSpace) -le ($cursor + $remaining)) {
 					$breakAt = $sliceLen + $nextSpace
 				}
 				else {
-					# No useful space → hard break at MaxLength
+					#No useful space → hard break at MaxLength
 					$breakAt = $sliceLen
 				}
 			}
@@ -370,7 +363,7 @@ function Wrap-InputText {
 			$segment = $line.Substring($cursor, $breakAt).TrimEnd()
 			$cursor += $breakAt
 
-			# Skip a single run of spaces between segments
+			#Skip a single run of spaces between segments
 			while ($cursor -lt $line.Length -and $line[$cursor] -eq ' ') { $cursor++ }
 
 			$results += [PSCustomObject]@{
@@ -399,16 +392,16 @@ function Append-HtmlSpan($Block, $TokenColor){
 		$Block = [System.Web.HttpUtility]::HtmlEncode($Block) 
 		if(-not $Block.Trim()){ $Block = $Block.Replace(' ','&nbsp;') }
 
-		# --- NEW: safe color resolution ---
+		# --- safe color resolution ---
 		if (-not $TokenColor) { $TokenColor = 'Unknown' }
 		$colorIndex = $TokenColors[$TokenColor]
 		$HtmlColor = if ($null -eq $colorIndex) {
-			# Fallback when token type isn’t mapped
+			#Fallback when token type isn’t mapped
 			'Black'
 		} else {
 			[System.Drawing.Color]::FromKnownColor($colorIndex).Name
 		}
-		# --- END NEW ---
+		# --- End SCR ---
 
 		if($TokenColor -eq 'String' -or $TokenColor -eq 'Comment'){
 			$Lines = $Block -split "`r`n"
@@ -511,79 +504,79 @@ __HTML__
 }
 
 function Create-PSListing {
-	# Reset line counter
+	#Reset line counter
 	$Script:LineNo = 1
 
-	# Get structured input objects (LineValue + TextLine)
+	#Get structured input objects (LineValue + TextLine)
 	$DataObj = Read-InputFile
 
-	# Initialize builders
+	#Initialize builders
 	$CodeBuilder = New-Object System.Text.StringBuilder
 	$LineBuilder = New-Object System.Text.StringBuilder
 
-	# Track block comment state across line segments
+	#Track block comment state across line segments
 	$inBlockComment = $false
 
 	foreach ($entry in $DataObj) {
-		# Tokenize each logical line segment
+		#Tokenize each logical line segment
 		$tokens = [System.Management.Automation.PsParser]::Tokenize($entry.TextLine, [ref] $null)
 
 		$position = 0
 		foreach ($token in $tokens) {
 			$content = $entry.TextLine.Substring($token.Start, $token.Length)
 
-			# Detect block comment delimiters
+			#Detect block comment delimiters
 			$isStartDelimiter = ($content -eq '<#')
 			$isEndDelimiter   = ($content -eq '#>')
 
-			# Handle any gap before this token
+			#Handle any gap before this token
 			if ($position -lt $token.Start) {
 				$gap = $entry.TextLine.Substring($position, ($token.Start - $position))
 				$gapColor = if ($inBlockComment) { 'Comment' } else { 'Unknown' }
 				Append-HtmlSpan $gap $gapColor
 			}
 
-			# Decide effective color for this token
+			#Decide effective color for this token
 			$effectiveColor = if ($inBlockComment -or $isStartDelimiter -or $isEndDelimiter) {
 				'Comment'
 			} else {
 				$token.Type.ToString()
 			}
-			if (-not $effectiveColor) { $effectiveColor = 'Unknown' }  # safety fallback
+			if (-not $effectiveColor) { $effectiveColor = 'Unknown' }  #safety fallback
 
 			Append-HtmlSpan $content $effectiveColor
 
-			# Update block comment state
+			#Update block comment state
 			if ($isStartDelimiter) { $inBlockComment = $true }
 			elseif ($isEndDelimiter) { $inBlockComment = $false }
 
 			$position = $token.Start + $token.Length
 		}
 
-		# Trailing gap after last token on the line
+		#Trailing gap after last token on the line
 		if ($position -lt $entry.TextLine.Length) {
 			$tail = $entry.TextLine.Substring($position)
 			$tailColor = if ($inBlockComment) { 'Comment' } else { 'Unknown' }
 			Append-HtmlSpan $tail $tailColor
 		}
 
-		# After finishing this line segment, append a break and line number/wrap marker
+		#After finishing this line segment, append a break and line number/wrap marker
 		[Void]$CodeBuilder.Append("<BR/>`r`n")
 
 		if ($entry.LineValue -is [int]) {
-			# Normal editor line number
+			#Normal editor line number
 			[Void]$LineBuilder.Append($LineNoFormat -f $entry.LineValue)
 		}
 		else {
-				# Wrap indicator (apply format string)
+				#Wrap indicator (apply format string)
 				[Void]$LineBuilder.Append($WrapIndicatorFormat -f $entry.LineValue)
 			}
 	}
 
-	# Build final HTML
+	#Build final HTML
 	$Html = Get-HtmlClipboardFormat $CodeBuilder.ToString() 'Print'
 
-	# Decide output file name
+	#Decide output file name
 	$R = @('.psm*1','.htm','\*$')
 	if ($OpenInWebBrowser.IsPresent) {
 		if ($OutputToTemp.IsPresent) {
@@ -620,8 +613,8 @@ function Build-TokenList{
 	param(
 		[switch]$ShowComments,
 		[switch]$ShowStart,
-		[switch]$SortByType,    # New parameter to control sort order
-		[switch]$SortByContent  # New parameter to control sort order
+		[switch]$SortByType,    #Parameter to control sort order
+		[switch]$SortByContent  #Parameter to control sort order
 	)
 
 	if ($My.OutputIdx -ne [TokenReportOutput]::Raw) {
