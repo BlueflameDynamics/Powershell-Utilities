@@ -235,6 +235,22 @@ foreach($Line in $Lines){
 return $Block
 }
 
+function Ensure-MinimumLineNoWidth{
+	param([Parameter(Position = 0, ValueFromPipeline, Mandatory)][Alias('In')][string]$InputStr)
+
+	# Split on any newline style
+	$Lines = $InputStr -split "\r?\n"
+
+	$RequiredWidth = $Lines.Length.ToString().Length
+
+	if ($Script:LineNoWidth -lt $RequiredWidth) {
+		$Script:LineNoWidth = $RequiredWidth
+	}
+
+	# Build format string like "{0:000}<BR/>"
+	$Script:LineNoFormat = "{0:$('0' * $Script:LineNoWidth)}<BR/>"
+}
+
 function Remove-TempFile{
 	param(
 		[Parameter(Position = 0,Mandatory,ValueFromPipeline)][String]$Path,
@@ -285,8 +301,9 @@ function Select-InputFile{
 
 function Read-InputFile{
 	Select-InputFile 
+	Ensure-MinimumLineNoWidth -InputStr $Text
 	#Tab Expansion 
-	$Script:Text = $Text|Expand-Tabs -Tw $TabWidth 
+	$Script:Text = $Text|Expand-Tabs -Tw $TabWidth
 	#Wrap long lines before tokenization 
 	$DataObj = Wrap-InputText -Text $Text -MaxLength $MaxLineLength
 	$DataObj }
