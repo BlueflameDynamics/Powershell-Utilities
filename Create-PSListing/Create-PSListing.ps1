@@ -209,25 +209,25 @@ $TokenColors = @{
 
 #region Utility Functions
 function Expand-Tabs{
-param(
-	[Parameter(Position = 0,ValueFromPipeline,Mandatory)][Alias('In')][String]$InputStr,
-	[Parameter(Position = 1)][Alias('Tw')][UInt32]$TabWidth = 8)
+	param(
+		[Parameter(Position = 0, ValueFromPipeline, Mandatory)][Alias('In')][string]$InputStr,
+		[Parameter(Position = 1)][Alias('Tw')][uint32]$TabWidth = 8)
 
-$Block = ''
-$EOL = $False
-$Lines = $InputStr -split "`r`n"
-	
-foreach($Line in $Lines){
-	while($EOL -eq $False){
-		$I = $Line.IndexOf("`t")
-		if($I -eq -1){$EOL = $True;break}
-		$Pad = if($TabWidth -gt 0){
-			' ' * ($TabWidth - ($I % $TabWidth))}
-		else{''}
-		$Line = $Line -replace "^([^\t]{$I})\t(.*)$","`$1$Pad`$2"}
-	$Block += '{0}{1}' -f $Line,"`r`n"
-	$EOL = $False}
-return $Block
+	$sb = [System.Text.StringBuilder]::new()
+	$lines = $InputStr -split "`r`n"
+
+	foreach ($line in $lines){
+		while (($i = $line.IndexOf("`t")) -ge 0){
+			#Compute padding to next tab stop
+			$padCount = if ($TabWidth -gt 0){$TabWidth - ($i % $TabWidth)}else{0}
+			$pad = ' ' * $padCount
+			#Replace the tab at index $i
+			$line = $line.Substring(0, $i) + $pad + $line.Substring($i + 1)
+		}
+		#Append expanded line + CRLF
+		[void]$sb.Append($line).Append("`r`n")
+	}
+	return $sb.ToString()
 }
 
 function Ensure-MinimumLineNoWidth{
