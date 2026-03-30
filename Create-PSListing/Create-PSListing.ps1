@@ -87,7 +87,6 @@ assuming PowerShell security is set to RemoteSigned.
 	Get-ChildItem -Path C:\scripts\Find-DisabledMailbox.ps1|.\Create-PSListing.ps1 -Mode Both
 	Creates an HTML file: C:\scripts\Find-DisabledMailbox.htm, with both a listing and token report.
 #>
-
 [CmdletBinding()]
 param(
 	[Parameter(
@@ -165,13 +164,15 @@ RV -Name P
 
 #region Script Variables
 $AppVersion = '2.3'
-$psISEHost = 'Windows PowerShell ISE Host'
-$VSCodeHost = 'Visual Studio Code Host'
-$ReportName = 'Powershell Token Report'
+$HostID = @{
+	PsISE  = 'Windows PowerShell ISE Host'
+	VSCode = 'Visual Studio Code Host'}
+$RptName = 'Powershell Token Report'
 $MatchStr = '\.psm?1$'
 $RVStr = @('.psm*1','_Tokens.txt','\*$','','_Tokens.htm')
 $ErrMsg = @(' only supports .ps1 and .psm1 files',' requires a .ps1 or .psm1 input file')
 $HtmlFont = -join('font-family:Consolas,Lucida Console; font-size:',$FontSize,'pt;')
+$CrLf = "`r`n"
 $LineNo = 1
 $LineNoFormat = ''
 $OutName = ''
@@ -210,22 +211,22 @@ $TokenColors = @{
 #region Utility Functions
 function Expand-Tabs{
 	param(
-		[Parameter(Position = 0, ValueFromPipeline, Mandatory)][Alias('In')][string]$InputStr,
+		[Parameter(Position = 0,ValueFromPipeline,Mandatory)][Alias('In')][string]$InputStr,
 		[Parameter(Position = 1)][Alias('Tw')][uint32]$TabWidth = 8)
 
 	$sb = [System.Text.StringBuilder]::new()
-	$lines = $InputStr -split "`r`n"
+	$lines = $InputStr -split $CrLf
 
 	foreach ($line in $lines){
 		while (($i = $line.IndexOf("`t")) -ge 0){
 			#Compute padding to next tab stop
-			$padCount = if ($TabWidth -gt 0){$TabWidth - ($i % $TabWidth)}else{0}
+			$padCount = if($TabWidth -gt 0){$TabWidth - ($i % $TabWidth)}else{0}
 			$pad = ' ' * $padCount
 			#Replace the tab at index $i
 			$line = $line.Substring(0, $i) + $pad + $line.Substring($i + 1)
 		}
 		#Append expanded line + CRLF
-		[void]$sb.Append($line).Append("`r`n")
+		[void]$sb.Append($line).Append($CrLf)
 	}
 	return $sb.ToString()
 }
@@ -236,7 +237,7 @@ function Ensure-MinimumLineNoWidth{
 	#Get Minimum Width
 	$MinWidth = ($InputStr -split "\r?\n").Length.ToString().Length
 
-	if ($Script:LineNoWidth -lt $MinWidth) {
+	if($Script:LineNoWidth -lt $MinWidth){
 		$Script:LineNoWidth = $MinWidth
 	}
 
@@ -268,7 +269,7 @@ function Validate-ScriptType{
 function Select-InputFile{
 	if($Path.Length -eq 0){
 		switch($Host.Name){
-			$PSIseHost{
+			$HostID.PsISE  {
 				$Script:ScriptName = $psISE.CurrentFile.DisplayName
 				$Script:ScriptPath = $psISE.CurrentFile.FullPath
 				Validate-ScriptType 0
@@ -276,7 +277,7 @@ function Select-InputFile{
 							$psISE.CurrentFile.Editor.Text}
 						else{
 							$psISE.CurrentFile.Editor.SelectedText}}
-			$VSCodeHost{
+			$HostID.VSCode {
 				$PSEContext = $PSEditor.GetEditorContext()
 				$Script:ScriptPath = $PSEContext.CurrentFile.Path
 				$Script:ScriptName = Split-Path -Path $ScriptPath -Leaf
@@ -287,7 +288,7 @@ function Select-InputFile{
 		$Script:ScriptName = Split-Path -Path $Path -Leaf
 		$Script:ScriptPath = $Path
 		Validate-ScriptType 0
-		$Script:Text = (Get-Content -Path $Path) -join "`r`n"
+		$Script:Text = (Get-Content -Path $Path) -join $CrLf
 		}
 	else{Validate-ScriptType 1}
 }
@@ -301,7 +302,7 @@ function Read-InputFile{
 	$DataObj = Wrap-InputText -Text $Text -MaxLength $MaxLineLength
 	$DataObj }
 
-function Wrap-InputText {
+function Wrap-InputText{
 	param(
 		[string]$Text,
 		[int]$MaxLength,
@@ -311,12 +312,12 @@ function Wrap-InputText {
 	$results = @()
 	$lineNo  = 1
 	#Aim for segments at least ~60% of MaxLength when possible
-	$minSegment = [Math]::Max(10, [Math]::Floor($MaxLength * 0.6))
+	$minSegment = [Math]::Max(10,[Math]::Floor($MaxLength * 0.6))
 
-	foreach ($line in ($Text -split "`r`n")) {
+	foreach ($line in ($Text -split $CrLf)){
 		$remaining = $line.Length
 
-		if ($remaining -le $MaxLength) {
+		if($remaining -le $MaxLength){
 			$results += [PSCustomObject]@{ LineValue = $lineNo; TextLine = $line }
 			$lineNo++
 			continue
@@ -325,14 +326,14 @@ function Wrap-InputText {
 		$cursor       = 0
 		$firstSegment = $true
 
-		while ($cursor -lt $line.Length) {
+		while ($cursor -lt $line.Length){
 			$remaining = $line.Length - $cursor
 
 			#If the remainder fits, take it in one go
-			if ($remaining -le $MaxLength) {
+			if($remaining -le $MaxLength){
 				$segment = $line.Substring($cursor, $remaining).TrimEnd()
 				$results += [PSCustomObject]@{
-					LineValue = if ($firstSegment) { $lineNo } else { '-' }
+					LineValue = if($firstSegment){$lineNo}else{'-'}
 					TextLine  = $segment
 				}
 				break
@@ -340,18 +341,18 @@ function Wrap-InputText {
 
 			#Take a slice of MaxLength and try to break on the last space within it
 			$sliceLen = $MaxLength
-			$slice    = $line.Substring($cursor, $sliceLen)
+			$slice    = $line.Substring($cursor,$sliceLen)
 			$lastSpaceInSlice = $slice.LastIndexOf(' ')
 
-			if ($lastSpaceInSlice -ge $minSegment) {
+			if($lastSpaceInSlice -ge $minSegment){
 				#Good break point within slice
 				$breakAt = $lastSpaceInSlice
 			}
 			else {
 				#Look ahead: find the next space after MaxLength to avoid a short first segment
-				$rest     = $line.Substring($cursor + $sliceLen)
+				$rest      = $line.Substring($cursor + $sliceLen)
 				$nextSpace = $rest.IndexOf(' ')
-				if ($nextSpace -ge 0 -and ($sliceLen + $nextSpace) -le ($cursor + $remaining)) {
+				if($nextSpace -ge 0 -and ($sliceLen + $nextSpace) -le ($cursor + $remaining)){
 					$breakAt = $sliceLen + $nextSpace
 				}
 				else {
@@ -364,38 +365,36 @@ function Wrap-InputText {
 			$cursor += $breakAt
 
 			#Skip a single run of spaces between segments
-			while ($cursor -lt $line.Length -and $line[$cursor] -eq ' ') { $cursor++ }
+			while ($cursor -lt $line.Length -and $line[$cursor] -eq ' '){$cursor++}
 
 			$results += [PSCustomObject]@{
-				LineValue = if ($firstSegment) { $lineNo } else { '-' }
+				LineValue = if($firstSegment){$lineNo}else{'-'}
 				TextLine  = $segment
 			}
 			$firstSegment = $false
 		}
-
 		$lineNo++
 	}
-
 	return $results
 }
 #endregion
 
 #region Listing Functions
 function Append-HtmlSpan($Block, $TokenColor){ 
-	if (($TokenColor -eq 'NewLine') -or ($TokenColor -eq 'LineContinuation')){ 
-		if($TokenColor -eq 'LineContinuation'){ [Void]$CodeBuilder.Append('`') }
+	if(($TokenColor -eq 'NewLine') -or ($TokenColor -eq 'LineContinuation')){ 
+		if($TokenColor -eq 'LineContinuation'){[Void]$CodeBuilder.Append('`')}
 		[Void]$CodeBuilder.Append("<BR/>`r`n") 
 		[Void]$LineBuilder.Append($LineNoFormat -f $LineNo) 
 		$Script:LineNo++
 	}
 	else{
 		$Block = [System.Web.HttpUtility]::HtmlEncode($Block) 
-		if(-not $Block.Trim()){ $Block = $Block.Replace(' ','&nbsp;') }
+		if(-not $Block.Trim()){$Block = $Block.Replace(' ','&nbsp;')}
 
 		# --- safe color resolution ---
-		if (-not $TokenColor) { $TokenColor = 'Unknown' }
+		if(-not $TokenColor){$TokenColor = 'Unknown'}
 		$colorIndex = $TokenColors[$TokenColor]
-		$HtmlColor = if ($null -eq $colorIndex) {
+		$HtmlColor = if($null -eq $colorIndex){
 			#Fallback when token type isn’t mapped
 			'Black'
 		} else {
@@ -404,7 +403,7 @@ function Append-HtmlSpan($Block, $TokenColor){
 		# --- End SCR ---
 
 		if($TokenColor -eq 'String' -or $TokenColor -eq 'Comment'){
-			$Lines = $Block -split "`r`n"
+			$Lines = $Block -split $CrLf
 			$Block = ""
 			$MultipleLines = $False 
 			foreach($Line in $Lines){ 
@@ -469,7 +468,7 @@ __HTML__
 "@
 	$SF = '<!--StartFragment-->'
 	$HtmlTag = '__HTML__'
-	$Header = $Header.Replace('__LINES__', $LineBuilder.ToString())
+	$Header = $Header.Replace('__LINES__',$LineBuilder.ToString())
 	$StartFragment = $Header.IndexOf($SF) + $SF.Length + 2
 	$EndFragment = $Header.IndexOf('<!--EndFragment-->') +
 		$Html.Length - $HtmlTag.Length
@@ -480,7 +479,7 @@ __HTML__
 	$DS = '0'*10
 	$FS = '{0:D10}'
 
-	if ($Caller -eq 'Print'){
+	if($Caller -eq 'Print'){
 		$Header = $Header.Replace("Version:${AppVersion}",'')
 		0..5|ForEach-Object{$Header = $Header.Replace($HRV[$_]+$DS,'')}
 		$Header = $Header.Replace('SourceURL:file:///about:blank','')}
@@ -495,15 +494,15 @@ __HTML__
 	$SV = 'HTML Clipboard'
 	if($Path.Length -eq 0){
 		switch($Host.Name){
-			$psISEHost{$Header = $Header.Replace($SV,$psISE.CurrentFile.DisplayName)}
-			$VSCodeHost{$Header = $Header.Replace($SV,$ScriptName)}}}
+			$HostID.PsISE  {$Header = $Header.Replace($SV,$psISE.CurrentFile.DisplayName)}
+			$HostID.VSCode {$Header = $Header.Replace($SV,$ScriptName)}}}
 	else{$Header = $Header.Replace($SV,(Split-Path -Path $Path -Leaf))}
-	$Header = $Header.Replace($HtmlTag, $Html)
+	$Header = $Header.Replace($HtmlTag,$Html)
 	Write-Verbose -Message $Header
 	$Header
 }
 
-function Create-PSListing {
+function Create-PSListing{
 	#Reset line counter
 	$Script:LineNo = 1
 
@@ -511,59 +510,59 @@ function Create-PSListing {
 	$DataObj = Read-InputFile
 
 	#Initialize builders
-	$CodeBuilder = New-Object System.Text.StringBuilder
-	$LineBuilder = New-Object System.Text.StringBuilder
+	$CodeBuilder = [System.Text.StringBuilder]::new()
+	$LineBuilder = [System.Text.StringBuilder]::new()
 
 	#Track block comment state across line segments
 	$inBlockComment = $false
 
-	foreach ($entry in $DataObj) {
+	foreach ($entry in $DataObj){
 		#Tokenize each logical line segment
-		$tokens = [System.Management.Automation.PsParser]::Tokenize($entry.TextLine, [ref] $null)
+		$tokens = [System.Management.Automation.PsParser]::Tokenize($entry.TextLine,[ref]$null)
 
 		$position = 0
-		foreach ($token in $tokens) {
-			$content = $entry.TextLine.Substring($token.Start, $token.Length)
+		foreach ($token in $tokens){
+			$content = $entry.TextLine.Substring($token.Start,$token.Length)
 
-			#Detect block comment delimiters
+			#Detect block comment delimiters9
 			$isStartDelimiter = ($content -eq '<#')
 			$isEndDelimiter   = ($content -eq '#>')
 
 			#Handle any gap before this token
-			if ($position -lt $token.Start) {
-				$gap = $entry.TextLine.Substring($position, ($token.Start - $position))
-				$gapColor = if ($inBlockComment) { 'Comment' } else { 'Unknown' }
+			if($position -lt $token.Start){
+				$gap = $entry.TextLine.Substring($position,($token.Start - $position))
+				$gapColor = if($inBlockComment){'Comment'}else{'Unknown'}
 				Append-HtmlSpan $gap $gapColor
 			}
 
 			#Decide effective color for this token
-			$effectiveColor = if ($inBlockComment -or $isStartDelimiter -or $isEndDelimiter) {
+			$effectiveColor = if($inBlockComment -or $isStartDelimiter -or $isEndDelimiter){
 				'Comment'
 			} else {
 				$token.Type.ToString()
 			}
-			if (-not $effectiveColor) { $effectiveColor = 'Unknown' }  #safety fallback
+			if(-not $effectiveColor){$effectiveColor = 'Unknown'}  #safety fallback
 
 			Append-HtmlSpan $content $effectiveColor
 
 			#Update block comment state
-			if ($isStartDelimiter) { $inBlockComment = $true }
-			elseif ($isEndDelimiter) { $inBlockComment = $false }
+			if($isStartDelimiter){$inBlockComment = $true}
+			elseif($isEndDelimiter){$inBlockComment = $false}
 
 			$position = $token.Start + $token.Length
 		}
 
 		#Trailing gap after last token on the line
-		if ($position -lt $entry.TextLine.Length) {
+		if($position -lt $entry.TextLine.Length){
 			$tail = $entry.TextLine.Substring($position)
-			$tailColor = if ($inBlockComment) { 'Comment' } else { 'Unknown' }
+			$tailColor = if($inBlockComment){'Comment'}else{'Unknown'}
 			Append-HtmlSpan $tail $tailColor
 		}
 
 		#After finishing this line segment, append a break and line number/wrap marker
 		[Void]$CodeBuilder.Append("<BR/>`r`n")
 
-		if ($entry.LineValue -is [int]) {
+		if($entry.LineValue -is [int]){
 			#Normal editor line number
 			[Void]$LineBuilder.Append($LineNoFormat -f $entry.LineValue)
 		}
@@ -578,17 +577,17 @@ function Create-PSListing {
 
 	#Decide output file name
 	$R = @('.psm*1','.htm','\*$')
-	if ($OpenInWebBrowser.IsPresent) {
-		if ($OutputToTemp.IsPresent) {
+	if($OpenInWebBrowser.IsPresent){
+		if($OutputToTemp.IsPresent){
 			$Script:OutName = Join-Path -Path $Env:Temp -ChildPath ($ScriptName -replace($R[0],$R[1]) -replace $R[2],'')
 		}
 		else {
 			$Script:OutName = ($ScriptPath -replace($R[0],$R[1]) -replace $R[2],'')
 		}
 		$Html | Out-File -FilePath $OutName
-		if ($My.ModeIdx -eq [ModeOfOperation]::Listing) {
+		if($My.ModeIdx -eq [ModeOfOperation]::Listing){
 			Invoke-Item -LiteralPath $OutName
-			if ($OutputToTemp.IsPresent) { $OutName | Remove-TempFile }
+			if($OutputToTemp.IsPresent){$OutName | Remove-TempFile}
 		}
 	}
 	else {
@@ -613,25 +612,25 @@ function Build-TokenList{
 	param(
 		[switch]$ShowComments,
 		[switch]$ShowStart,
-		[switch]$SortByType,    #Parameter to control sort order
-		[switch]$SortByContent  #Parameter to control sort order
+		[switch]$SortByType,   #Switch to control sort order
+		[switch]$SortByContent #Switch to control sort order
 	)
 
-	if ($My.OutputIdx -ne [TokenReportOutput]::Raw) {
+	if($My.OutputIdx -ne [TokenReportOutput]::Raw){
 		#Filter to Selected PsToken Types
 		$TokenTypes = @('Command','CommandArgument','CommandParameter','Member','Type','Unknown','Variable')
-		if ($ShowComments.IsPresent) { 
+		if($ShowComments.IsPresent){ 
 			$TokenTypes += 'Comment'
 			[Array]::Sort($TokenTypes) 
 		}
 
-		$Tokens = $RawTokens | Where-Object { $_.Type.ToString() -in $TokenTypes }
+		$Tokens = $RawTokens | Where-Object {$_.Type.ToString() -in $TokenTypes}
 
 		#Build Custom Output Objects & Sort
 		$Script:Tokens = $Tokens | ForEach-Object {
-			$content = if ($_.Type -eq 'Comment') {
+			$content = if($_.Type -eq 'Comment'){
 				$_.Content.Substring(0, [Math]::Min($_.Content.Length, $MaxContentLength))
-			} else {
+			}else{
 				$_.Content
 			}
 
@@ -644,19 +643,16 @@ function Build-TokenList{
 				EndColumn   = $_.EndColumn
 				Length      = $_.Length
 			}
-
-			if ($ShowStart.IsPresent) {
+			if($ShowStart.IsPresent) {
 				Add-Member -InputObject $NewObj -MemberType NoteProperty -Name 'Start' -Value $_.Start
 			}
-
 			$NewObj
 		} | Sort-Object @(
-			if ($SortByType.IsPresent) { 'Type' }
-			if ($SortByContent.IsPresent) { 'Content' }
+			if($SortByType.IsPresent){'Type'}
+			if($SortByContent.IsPresent){'Content'}
 			'StartLine'
 			'StartColumn'
 		)
-
 		return [void]$Script:Tokens
 	}
 }
@@ -665,16 +661,16 @@ function Write-ToFile{
 	$Tokens|Format-Table -AutoSize | Out-File -Filepath ($OutName)
 	if($OutputToTemp.IsPresent){
 		switch($Host.Name){
-			$PSIseHost	{$psISE.CurrentPowerShellTab.Files.Add($OutName)}
-			$VSCodeHost {$PSEditor.Workspace.OpenFile($OutName)}
+			$HostID.PsISE	{$psISE.CurrentPowerShellTab.Files.Add($OutName)}
+			$HostID.VSCode {$PSEditor.Workspace.OpenFile($OutName)}
 				default {NotePad.exe $OutName}}
 		$OutName|Remove-TempFile}
 }
 
 function Write-ToHtml{
-	$Hdr = -join ('&nbsp;' * 13),'<b>',$ScriptName,'-',$ReportName,'</b>'+('<br/>' * 2)
+	$Hdr = -join ('&nbsp;' * 13),'<b>',$ScriptName,'-',$RptName,'</b>'+('<br/>' * 2)
 	$Html = $Tokens|ConvertTo-Html -As Table -Fragment -Property *
-	ConvertTo-Html -Body $Html -Title $ReportName -Head $Hdr| Out-File $OutName -Append:($My.ModeIdx -eq [ModeOfOperation]::Both)
+	ConvertTo-Html -Body $Html -Title $RptName -Head $Hdr| Out-File $OutName -Append:($My.ModeIdx -eq [ModeOfOperation]::Both)
 	if($OpenInWebBrowser.IsPresent){Invoke-Item -LiteralPath $OutName}
 		if($OutputToTemp.IsPresent){$OutName|Remove-TempFile}
 }
@@ -682,16 +678,16 @@ function Write-ToHtml{
 function Write-TokenResults{
 	switch($My.OutputIdx){
 		([Int][TokenReportOutput]::File)		{Write-ToFile}
-		([Int][TokenReportOutput]::GridView)	{$Tokens|Out-GridView -Title "$ScriptName - $ReportName"}
+		([Int][TokenReportOutput]::GridView)	{$Tokens|Out-GridView -Title "$ScriptName - $RptName"}
 		([Int][TokenReportOutput]::Host)		{$Tokens|Format-Table -AutoSize}
 		([Int][TokenReportOutput]::Html)		{Write-ToHtml}
 		([Int][TokenReportOutput]::Raw)			{$RawTokens}
 	}
 }
 
-function Create-TokenReport {
+function Create-TokenReport{
 	$DataObj = Read-InputFile
-	$Script:RawText = ($DataObj.TextLine -join "`r`n")
+	$Script:RawText = ($DataObj.TextLine -join $CrLf)
 	$Script:RawTokens = [System.Management.Automation.PsParser]::Tokenize($RawText, [ref] $null)
 	Build-TokenList -ShowComments:$ShowComments -ShowStart:$ShowStart -SortByContent:$SortByContent -SortByType:$SortByType
 	if($My.ModeIdx -ne [ModeOfOperation]::Both){Set-OutputFileName} 
