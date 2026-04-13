@@ -1,197 +1,206 @@
 <#
 .NOTES
 -------------------------------------
-Name:		Build-HexDump.ps1
-Version:	1.0 - 01/08/2022
-Author:		Randy E. Turner
-Email:		turner.randy21@yahoo.com
+Name:        Build-HexDump.ps1
+Version:     1.2 - 04/12/2026
+Author:      Randy E. Turner
+Email:       turner.randy21@yahoo.com
 -------------------------------------
 --------------------------------------------------------------------------------------------
 Revision History:
+v1.2 - 04/12/2026 - Improved VSCode support (deterministic open, safe delete, async handling)
+v1.1 - 04/08/2026 - Added VSCode Support
 v1.0 - 01/08/2022 - Original Release.
 --------------------------------------------------------------------------------------------
 
 .SYNOPSIS
-This script will produce a Hex File Dump for any input file.
+Produces a Hex File Dump for any input file.
 
 .DESCRIPTION
-This script uses the Powershell Format-Hex Cmdlet to convert input files to produce
-a Hex File Dump. 
+Uses Format-Hex to generate a hex dump and supports output to File, Host, or Printer.
 
-Parameters are provided to direct the resulting output to 1 of 3 primary targets: 
-File, Host, or Printer. 
+When -OutputTo File (default), two dynamic switches are available:
+-OutputToTemp (-T) and -OpenInEditor (-Edt).
 
-Two dynamic switches are available when -OutputTo is File (the default): 
--OutputToTemp (alias -T) & -OpenInEditor (alias -Edt).
+When -OutputToTemp is used, output is created in $Env:Temp, optionally opened in an editor,
+and then deleted safely (ISE or VSCode aware).
 
-When using the switch -OutputToTemp output is created in the $Env:Temp directory,
-sent to an ISE Editor Tab or NotePad, before the temp file is deleted. 
+When -OpenInEditor is used, the temp file is opened in ISE or VSCode instead of Notepad.
 
-The second dynamic switch -OpenInEditor may be used to override sending the temp file
-to an ISE Editor Tab & send it to NotePad instead.
-
-When output is directed to a Printer, a GridView is shown of all available printers. 
-Select the desired printer and click <OK> or <Cancel> to proceed.
-
-When -OutputTo Printer mode is used the output filename is copied to the Clipboard to
-permit naming files generated because of the printer type i.e., PDF.
+When output is directed to a Printer, a GridView is shown to select the printer.
 
 ----------------------------------------------------------------------------------------
 Security Note: This is an unsigned script, Powershell security may require you run the
 Unblock-File cmdlet with the Fully qualified filename before you can run this script,
 assuming PowerShell security is set to RemoteSigned.
 ----------------------------------------------------------------------------------------
-
-DYNAMIC PARAMETERS
-
--OutputToTemp [<SwitchParameter>]
-
-	Alias:	T
-	Required?					False
-	Position?					named
-	Default value				False
-	Accept pipeline input?		false
-	Accept wildcard characters? false
-
--OpenInEditor [<SwitchParameter>]
-
-	Alias:	Edt
-	Required?					False
-	Position?					named
-	Default value				False
-	Accept pipeline input?		false
-	Accept wildcard characters? false
-
-.Parameter Path
-Required, Path to input file. 
-
-.Parameter OutputTo - Alias: O
-Optional, Output Target\Type - Specfies the target device.
-
-.INPUTS
-A file to dump.
-
-.OUTPUTS
-A Hexidecimal File Dump. Named: <Original Path><Original Filename>.HexDump
-
-.EXAMPLE
-PS> .\Build-HexDump.ps1 -Path .\AudioPlayer.ps1 -OutputTo File -OutputToTemp
 #>
 [CmdletBinding()]
 param(
 	[Parameter(
 		Position = 0,
-		Mandatory=$False,
 		HelpMessage = 'The path of the input file',
-		ValueFromPipeline=$True)]
-		[String]$Path,
+		ValueFromPipeline = $True)]
+		[String]$FullName,
 	[Parameter(
 		Position = 1,
-		Mandatory=$False,
 		HelpMessage = 'Output Target')]
 		[Alias('O')]
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet('File','Host','Printer')]
-		[String]$OutputTo='File')
-DynamicParam{
-	# Set up the Run-Time Parameter Dictionary
-	$RuntimeParameterDictionary = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameterDictionary
-	#region Begin dynamic parameter definition
+		[String]$OutputTo = 'File'
+)
+DynamicParam {
+	$RuntimeParameterDictionary = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
+
 	if($OutputTo -eq 'File'){
-		#region OutputToTemp 
+		#region OutputToTemp
 		$DynamicParameterName = 'OutputToTemp'
-		$AttributeCollection = New-Object -TypeName System.Collections.ObjectModel.Collection[System.Attribute]
-		$ParameterAttribute = New-Object -TypeName System.Management.Automation.ParameterAttribute
-		$ParameterAlias = New-Object -TypeName System.Management.Automation.AliasAttribute -ArgumentList 'T'
+		$AttributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
+		$ParameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
+		$ParameterAlias = [System.Management.Automation.AliasAttribute]::new('T')
 		$AttributeCollection.Add($ParameterAlias)
 		$ParameterAttribute.Mandatory = $False
-		#$ParameterAttribute.Position = 2
-		$ParameterAttribute.HelpMessage = "Output file to Temp Directory?"
+		$ParameterAttribute.HelpMessage = 'Output file to Temp Directory?'
 		$AttributeCollection.Add($ParameterAttribute)
-		$RuntimeParameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList $DynamicParameterName,([switch]),$AttributeCollection
+		$RuntimeParameter = [System.Management.Automation.RuntimeDefinedParameter]::new(
+			$DynamicParameterName,([switch]),$AttributeCollection)
 		$RuntimeParameterDictionary.Add($DynamicParameterName, $RuntimeParameter)
 		#endregion
 		#region OpenInEditor
 		$DynamicParameterName = 'OpenInEditor'
-		$AttributeCollection = New-Object -TypeName System.Collections.ObjectModel.Collection[System.Attribute]
-		$ParameterAttribute = New-Object -TypeName System.Management.Automation.ParameterAttribute
-		$ParameterAlias = New-Object -TypeName System.Management.Automation.AliasAttribute -ArgumentList 'Edt'
+		$AttributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
+		$ParameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
+		$ParameterAlias = [System.Management.Automation.AliasAttribute]::new('Edt')
 		$AttributeCollection.Add($ParameterAlias)
 		$ParameterAttribute.Mandatory = $False
-		#$ParameterAttribute.Position = 3
-		$ParameterAttribute.HelpMessage = "Open Temp File in Text Editor?"
+		$ParameterAttribute.HelpMessage = 'Open Temp File in Text Editor?'
 		$AttributeCollection.Add($ParameterAttribute)
-		$RuntimeParameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList $DynamicParameterName,([switch]),$AttributeCollection
+		$RuntimeParameter = [System.Management.Automation.RuntimeDefinedParameter]::new(
+			$DynamicParameterName,([switch]),$AttributeCollection)
 		$RuntimeParameterDictionary.Add($DynamicParameterName, $RuntimeParameter)
 		#endregion
 	}
-	# When done building dynamic parameters, return
 	return $RuntimeParameterDictionary
 }
 begin{
-	#region Script Level Variables
-	$MyName = ($MyInvocation.MyCommand).Name
+	#region Host Detection
+	$HostID = @{
+		IsISE    =  $null -ne $psISE
+		IsVSCode = ($null -ne $psEditor -and $null -ne $psEditor.GetEditorContext())
+	}
+	$CurrentEditorFile = @{
+		ISE    = if($HostID.IsISE)   {$psISE.CurrentPowerShellTab.Files.SelectedFile};
+		VSCode = if($HostID.IsVSCode){$psEditor.GetEditorContext().CurrentFile}
+	}
+	#endregion
+	#region Script Variables
+	$HexDump = $null
 	$MyParam = ($MyInvocation.MyCommand).Parameters
 	$Outputs = $MyParam['OutputTo'].Attributes.ValidValues
-	$PsIseHost = 'Windows PowerShell ISE Host'
-	$PsIseCurTab = if($Host.Name -eq $PsIseHost){$psISE.CurrentPowerShellTab.Files.SelectedFile}
-	$TextEditor = 'NotePad.exe' #Path to Text Editor
-	$DumpExt = '.HexDump' #Output File Extention
+	$Tmp     = $RuntimeParameterDictionary.Item('OutputToTemp').IsSet
+	$OpenEd  = $RuntimeParameterDictionary.Item('OpenInEditor').IsSet
+	$TextEditor = 'Notepad.exe'
+	$DumpExt = '.HexDump'
 	$EOFMark = "{0}{1}[ End-of-File ]{1}" -f ("`t"*4),('-'*10)
-	$OTT = $RuntimeParameterDictionary.Item('OutputToTemp').IsSet
 	#endregion
+
+	function Resolve-CurrentLocation {
+		param([Parameter(Mandatory)][Alias('P')][String]$Path)
+		return "{0}\{1}" -f (Get-Location),(Split-Path -Path $Path -Leaf)
+	}
+
 	Clear-Host
 }
 process{
 	#region Validate Input
-	try{[Void](Test-Path -Path $Path)}
-	catch{
+	if ([string]::IsNullOrWhiteSpace($FullName)){
+		if ($HostID.IsISE){
+			$FullName = $CurrentEditorFile.ISE.FullPath
+			if(!$CurrentEditorFile.ISE.IsSaved){$CurrentEditorFile.ISE.Save()}
+		}
+		elseif($HostID.IsVSCode){
+			$FullName = $CurrentEditorFile.VSCode.Path
+		}
+	}
+
+	if($FullName.StartsWith('.')){$FullName = Resolve-CurrentLocation -Path $FullName}
+
+	try {[Void](Test-Path -Path $FullName)}
+	catch {
 		throw $_.Exception.Message
-		exit}
-	$FileFI = [IO.FileInfo]::New($Path)
-	if(!$FileFI.Exists){
-		throw ("Input File: {0} Not Found!" -f $FileFI.Name)
-		exit}
+		exit
+	}
+
+	$FileFI = [IO.FileInfo]::new($FullName)
+	if (!$FileFI.Exists) {
+		throw "Input File: $($FileFI.Name) Not Found!"
+		exit
+	}
 	#endregion
 
 	#region Output File Naming
-	if($OTT){
-		$FileOut = Join-Path -Path $Env:Temp -ChildPath ($FileFI.Name + $DumpExt)}
-	else{
-		$FileOut = ($FileFI.FullName + $DumpExt)}
+	if($Tmp){$FileOut = Join-Path -Path $Env:Temp -ChildPath ($FileFI.Name + $DumpExt)}
+	else {$FileOut = $FileFI.FullName + $DumpExt}
 	#endregion
 
 	#region Output Control
 	'Working ...'
-	$HexOut = Format-Hex -Path $Path
+	$HexOut = Format-Hex -Path $FullName
 	if(!$MyInvocation.ExpectingInput){Clear-Host}
+
 	switch([Array]::IndexOf($Outputs,$OutputTo)){
-		0	{#File
-			if($OTT){ 
-				if($Host.Name -eq $PsIseHost -and !$RuntimeParameterDictionary.Item('OpenInEditor').IsSet){
-					($HexOut += $EOFMark)|Out-File -FilePath $FileOut
-					$psISE.CurrentPowerShellTab.Files.Add($FileOut)}
-				else{
-					#Adjust for TabWidth, Notepad (8) vs ISE (4)
-					($HexOut += $EOFMark.Substring(2))|Out-File -FilePath $FileOut
-					& $TextEditor $FileOut}
-				#Do-While to force wait for large files
-				do{ Start-Sleep -Seconds 5
-					Remove-Item -LiteralPath $FileOut -ErrorAction SilentlyContinue}
-				while(Test-Path -LiteralPath $FileOut)}
-			else{($HexOut += $EOFMark.Substring(2))|Out-File -FilePath $FileOut}}
-		1	{#Host
-			($HexOut += $EOFMark)|Out-Host}
-		2	{#Printer
-			$SelectedPrinter = Get-Printer|Out-GridView -Title 'Select Printer' -PassThru
-			if($Null -ne $SelectedPrinter){
+		0 { #File
+			($HexOut += $EOFMark.Substring(2)) | Out-File -FilePath $FileOut
+			if($Tmp -and $OpenEd){
+				if($HostID.IsISE){
+					$psISE.CurrentPowerShellTab.Files.Add($FileOut)
+					$HexDump = $psISE.CurrentPowerShellTab.Files[
+						$psISE.CurrentPowerShellTab.Files.Count - 1]
+				}
+				elseif($HostID.IsVSCode){
+					# Open file
+					$psEditor.Workspace.OpenFile($FileOut)
+
+					# Wait for VSCode to actually load it
+					$WaitCount = 0
+					while($psEditor.GetEditorContext().CurrentFile.Path -ne $FileOut -and $WaitCount -lt 20){
+						Start-Sleep -Milliseconds 150
+						$WaitCount++
+					}
+				}
+				else{& $TextEditor $FileOut}
+
+				# Safe delete loop (bounded)
+				$MaxWait = 20
+				$Count = 0
+				while ((Test-Path $FileOut) -and $Count -lt $MaxWait){
+					try {Remove-Item -LiteralPath $FileOut -ErrorAction Stop}
+					catch {
+						Start-Sleep -Milliseconds 250
+						$Count++
+					}
+				}
+			}
+		}
+		1 { # Host
+			($HexOut += $EOFMark) | Out-Host
+		}
+		2 { # Printer
+			$SelectedPrinter = Get-Printer | Out-GridView -Title 'Select Printer' -PassThru
+			if ($null -ne $SelectedPrinter) {
 				Set-Clipboard -Value (Split-Path -Path $FileOut -Leaf)
-				#Replace Tabs with Spaces
-				$HexOut += (' '*16+$EOFMark.Substring(4))
-				$HexOut|Out-Printer -Name $SelectedPrinter.Name
-				}}
+				$HexOut += (' ' * 16 + $EOFMark.Substring(4))
+				$HexOut | Out-Printer -Name $SelectedPrinter.Name
+			}
+		}
 	}
 	#endregion
 }
-end{if($Null -ne $PsIseCurTab){$psISE.CurrentPowerShellTab.Files.SetSelectedFile($PsIseCurTab)}
-	'Dump Complete'}
+end{
+	if($HostID.IsISE -and $null -ne $HexDump){
+		$psISE.CurrentPowerShellTab.Files.SetSelectedFile($HexDump)
+	}
+}
+
+# .\Build-HexDump.ps1 -OutputTo File -OutputToTemp -OpenInEditor
