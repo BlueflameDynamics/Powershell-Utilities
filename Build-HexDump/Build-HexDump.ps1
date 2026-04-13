@@ -60,7 +60,6 @@ DynamicParam{
 		$ParameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
 		$ParameterAlias = [System.Management.Automation.AliasAttribute]::new('T')
 		$AttributeCollection.Add($ParameterAlias)
-		$ParameterAttribute.Mandatory = $False
 		$ParameterAttribute.HelpMessage = 'Output file to Temp Directory?'
 		$AttributeCollection.Add($ParameterAttribute)
 		$RuntimeParameter = [System.Management.Automation.RuntimeDefinedParameter]::new(
@@ -73,7 +72,6 @@ DynamicParam{
 		$ParameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
 		$ParameterAlias = [System.Management.Automation.AliasAttribute]::new('Edt')
 		$AttributeCollection.Add($ParameterAlias)
-		$ParameterAttribute.Mandatory = $False
 		$ParameterAttribute.HelpMessage = 'Open Temp File in Text Editor?'
 		$AttributeCollection.Add($ParameterAttribute)
 		$RuntimeParameter = [System.Management.Automation.RuntimeDefinedParameter]::new(
@@ -86,18 +84,17 @@ DynamicParam{
 begin{
 	#region Host Detection
 	$HostID = @{
-		IsISE    =  $null -ne $psISE
-		IsVSCode = ($null -ne $psEditor -and $null -ne $psEditor.GetEditorContext())
+		ISE    =  $null -ne $psISE
+		VSCode = ($null -ne $psEditor -and $null -ne $psEditor.GetEditorContext())
 	}
 	$CurrentEditorFile = @{
-		ISE    = if($HostID.IsISE)   {$psISE.CurrentPowerShellTab.Files.SelectedFile};
-		VSCode = if($HostID.IsVSCode){$psEditor.GetEditorContext().CurrentFile}
+		ISE    = if($HostID.ISE)   {$psISE.CurrentPowerShellTab.Files.SelectedFile};
+		VSCode = if($HostID.VSCode){$psEditor.GetEditorContext().CurrentFile}
 	}
 	#endregion
 	#region Script Variables
 	$HexDump = $null
 	$MyParam = ($MyInvocation.MyCommand).Parameters
-	$Outputs = $MyParam['OutputTo'].Attributes.ValidValues
 	$Tmp     = $RuntimeParameterDictionary.Item('OutputToTemp').IsSet
 	$OpenEd  = $RuntimeParameterDictionary.Item('OpenInEditor').IsSet
 	$TextEditor = 'Notepad.exe'
@@ -115,13 +112,13 @@ begin{
 process{
 	#region Validate Input
 	if ([string]::IsNullOrWhiteSpace($FullName)){
-		if ($HostID.IsISE){
+		if ($HostID.ISE){
 			$FullName = $CurrentEditorFile.ISE.FullPath
 			if(!$CurrentEditorFile.ISE.IsSaved){$CurrentEditorFile.ISE.Save()}
 		}
-		elseif($HostID.IsVSCode){
+		elseif($HostID.VSCode){
 			$FullName = $CurrentEditorFile.VSCode.Path
-            # Always save in VS Code, because there is no "Dirty File" Detection.
+			#VS Code has no 'Dirty File' Detection, always save.
 			$CurrentEditorFile.VSCode.Save()
 		}
 	}
@@ -129,13 +126,10 @@ process{
 	if($FullName.StartsWith('.')){$FullName = Resolve-CurrentLocation -Path $FullName}
 
 	try {[Void](Test-Path -Path $FullName)}
-	catch {
-		throw $_.Exception.Message
-		exit
-	}
+	catch {throw $_.Exception.Message}
 
 	$FileFI = [IO.FileInfo]::new($FullName)
-	if (!$FileFI.Exists) {
+	if (!$FileFI.Exists){
 		throw "Input File: $($FileFI.Name) Not Found!"
 		exit
 	}
@@ -151,20 +145,20 @@ process{
 	$HexOut = Format-Hex -Path $FullName
 	if(!$MyInvocation.ExpectingInput){Clear-Host}
 
-	switch([Array]::IndexOf($Outputs,$OutputTo)){
-		0 { #File
+	switch([Array]::IndexOf($MyParam['OutputTo'].Attributes.ValidValues,$OutputTo)){
+		0 {#File
 			($HexOut += $EOFMark.Substring(2)) | Out-File -FilePath $FileOut
 			if($Tmp -and $OpenEd){
-				if($HostID.IsISE){
+				if($HostID.ISE){
 					$psISE.CurrentPowerShellTab.Files.Add($FileOut)
 					$HexDump = $psISE.CurrentPowerShellTab.Files[
 						$psISE.CurrentPowerShellTab.Files.Count - 1]
 				}
-				elseif($HostID.IsVSCode){
-					# Open file
+				elseif($HostID.VSCode){
+					#Open file
 					$psEditor.Workspace.OpenFile($FileOut)
 
-					# Wait for VSCode to actually load it
+					#Wait for VSCode to actually load it
 					$WaitCount = 0
 					while($psEditor.GetEditorContext().CurrentFile.Path -ne $FileOut -and $WaitCount -lt 20){
 						Start-Sleep -Milliseconds 150
@@ -172,8 +166,7 @@ process{
 					}
 				}
 				else{& $TextEditor $FileOut}
-
-				# Safe delete loop (bounded)
+				#Safe delete loop (bounded)
 				$MaxWait = 20
 				$Count = 0
 				while ((Test-Path $FileOut) -and $Count -lt $MaxWait){
@@ -185,10 +178,10 @@ process{
 				}
 			}
 		}
-		1 { # Host
+		1 {#Host
 			($HexOut += $EOFMark) | Out-Host
 		}
-		2 { # Printer
+		2 {#Printer
 			$SelectedPrinter = Get-Printer | Out-GridView -Title 'Select Printer' -PassThru
 			if ($null -ne $SelectedPrinter) {
 				Set-Clipboard -Value (Split-Path -Path $FileOut -Leaf)
@@ -200,9 +193,9 @@ process{
 	#endregion
 }
 end{
-	if($HostID.IsISE -and $null -ne $HexDump){
+	if($HostID.ISE -and $null -ne $HexDump){
 		$psISE.CurrentPowerShellTab.Files.SetSelectedFile($HexDump)
 	}
 }
 
-# .\Build-HexDump.ps1 -OutputTo File -OutputToTemp -OpenInEditor
+#.\Build-HexDump.ps1 -OutputTo File -OutputToTemp -OpenInEditor
