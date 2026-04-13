@@ -40,7 +40,7 @@ param(
 	[Parameter(
 		Position = 0,
 		HelpMessage = 'The path of the input file',
-		ValueFromPipeline = $True)]
+		ValueFromPipeline)]
 		[String]$FullName,
 	[Parameter(
 		Position = 1,
@@ -50,7 +50,7 @@ param(
 		[ValidateSet('File','Host','Printer')]
 		[String]$OutputTo = 'File'
 )
-DynamicParam {
+DynamicParam{
 	$RuntimeParameterDictionary = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
 
 	if($OutputTo -eq 'File'){
@@ -121,6 +121,8 @@ process{
 		}
 		elseif($HostID.IsVSCode){
 			$FullName = $CurrentEditorFile.VSCode.Path
+            # Always save in VS Code, because there is no "Dirty File" Detection.
+			$CurrentEditorFile.VSCode.Save()
 		}
 	}
 
