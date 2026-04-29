@@ -71,20 +71,20 @@ assuming PowerShell security is set to RemoteSigned.
 	Updated video files.	
 
 .EXAMPLE
-	PS> .\Set-VideoMediaLang.ps1 -FullName f:\SuperCar-1961\SuperCar-1961_S1E01_Italy.mkv =LanguageID ita -FullLog
+	PS> .\Set-VideoMediaLangEx.ps1 -FullName f:\SuperCar-1961\SuperCar-1961_S1E01_Italy.mkv =LanguageID ita -FullLog
 	This command uses one input file and directs output to a "New" subfolder. The first audio track is set to
 	Italian. The full text from FFmpeg is displayed in the console
 
 .EXAMPLE
-	PS> (GCI -Path f:\SuperCar-1961\*.mkv)|.\Set-VideoMediaLang.ps1 
+	PS> (GCI -Path f:\SuperCar-1961\*.mkv)|.\Set-VideoMediaLangEx.ps1 
 	This command uses the pipeline to pass a list of input files and directs output to a "New" subfolder.
 	Only limited status information is displayed, unless an FFmpeg error is detected.
 	Optional,
-	PS> (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -FullLog|Out-File Set-VideoMediaLang.log
+	PS> (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -FullLog|Out-File Set-VideoMediaLang.log
 	This command uses the pipeline to pass a list of input files and directs that the full FFmpeg log be saved to a text file.
 
 .EXAMPLE
-	PS> .\Set-VideoMediaLang.ps1 -FN f:\Video\Around_the_World_in_80_Days_HD.mp4 -AL fre -AT 1
+	PS> .\Set-VideoMediaLangEx.ps1 -FN f:\Video\Around_the_World_in_80_Days_HD.mp4 -AL fre -AT 1
 	This example would set the second audio track language to French.
 #>
 [CmdletBinding()]
@@ -98,7 +98,6 @@ Param(
 	[Parameter()][Alias('FL')][Switch]$FullLog,
 	[Parameter()][Alias('DI')][Switch]$DelIn	
 	)
-
 Begin{
 #region Variables
 $Locked = $False
@@ -116,45 +115,30 @@ Function Resolve-CurrentLocation{
 	param([Parameter(Mandatory)][Alias('P')][String]$Path)
 	return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)
 }
-#endregion
-#region Startup Code
-	if(!(Get-Command $FFmpeg -ErrorAction SilentlyContinue)){throw ('{0} not found on PATH.' -f $FFmpeg)}
-	$JsonFile.Info = [IO.FileInfo]::new((Resolve-CurrentLocation -Path $JsonFile.File))
-	if(!$JsonFile.Info.Exists){Throw [System.IO.FileNotFoundException] ('JSON Language File: ({0}) Not Found!' -f $JsonFile.Info.FullName)}
-	$VideoLanguageIdDictionary = Import-VideoLanguageIdDictionary -VDF $JsonFile.Info.FullName
-	if(!$VideoLanguageIdDictionary.ContainsKey($LanguageID)){
-		Throw ('Invalid LanguageID: {0}.' -f $LanguageID)
-	}
-	if(!$FullLog){
-		'Processing ...'
-		'Target Language Code: {0} Language: {1} Track#: {2}' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID],$AudioTrack
-	}
-#endregion
-}
-Process{
-#region Utility Functions
 Function Run-FFmpeg(){
 	$Prefix = '-hide_banner -loglevel error '
 	$MetaCmd = '-metadata:s:a:{0}' -f $AudioTrack
 	$CmdLn = '-map 0 -c:a copy -c:v copy {0}' -f $MetaCmd
+	$InputSwitch   = '-y -i'
+	$LangKey       = 'language='
 	$Masks = [Ordered]@{
 		LangOnly = '{0} "{1}" {2} {3}{4} "{5}"'
 		LangName = '{0} "{1}" {2} {3}{4} {5} {6}"{7}" "{8}"'}
 	# NOTE: MaskArgs.* must remain [Ordered] to preserve format-string parameter order.		
 	$MaskArgs = [Ordered]@{
 		LangOnly = [Ordered]@{
-		    InputSwitch   = '-y -i'
+		    InputSwitch   = $InputSwitch
 		    InputFile     = $FI.FullName
 		    CmdLine       = $CmdLn
-		    LangKey       = 'language='
+		    LangKey       = $LangKey
 		    LangValue     = $LanguageID
 		    OutputFile    = Join-Path $PathOut $FI.Name
 		}
 		LangName = [Ordered]@{
-		    InputSwitch   = '-y -i'
+		    InputSwitch   = $InputSwitch
 		    InputFile     = $FI.FullName
 		    CmdLine       = $CmdLn
-		    LangKey       = 'language='
+		    LangKey       = $LangKey
 		    LangValue     = $LanguageID
 		    TitleMetaCmd  = $MetaCmd
 		    TitleKey      = 'title='
@@ -163,9 +147,9 @@ Function Run-FFmpeg(){
 		}
 	}
 	if(!$NameAudio){
-		$StdArgs = $Masks.LangOnly -f $($MaskArgs.LangOnly.Values)}
+		$StdArgs = $Masks.LangOnly -f @($MaskArgs.LangOnly.Values)}
 	else{
-		$StdArgs = $Masks.LangName -f $($MaskArgs.LangName.Values)}
+		$StdArgs = $Masks.LangName -f @($MaskArgs.LangName.Values)}
 	$ArgList = if(!$FullLog){$Prefix+$StdArgs}else{$StdArgs}
 	$Process = [System.Diagnostics.Process]::New()
 	$Process.StartInfo.FileName = $FFmpeg
@@ -189,6 +173,21 @@ Function Run-FFmpeg(){
 	return [PSCustomObject][Ordered]@{Process=$Process;OutputText=$OutputText}
 }
 #endregion
+#region Startup Code
+	if(!(Get-Command $FFmpeg -ErrorAction SilentlyContinue)){throw ('{0} not found on PATH.' -f $FFmpeg)}
+	$JsonFile.Info = [IO.FileInfo]::new((Resolve-CurrentLocation -Path $JsonFile.File))
+	if(!$JsonFile.Info.Exists){Throw [System.IO.FileNotFoundException] ('JSON Language File: ({0}) Not Found!' -f $JsonFile.Info.FullName)}
+	$VideoLanguageIdDictionary = Import-VideoLanguageIdDictionary -VDF $JsonFile.Info.FullName
+	if(!$VideoLanguageIdDictionary.ContainsKey($LanguageID)){
+		Throw ('Invalid LanguageID: {0}.' -f $LanguageID)
+	}
+	if(!$FullLog){
+		'Processing ...'
+		'Target Language Code: {0} Language: {1} Track#: {2}' -f $LanguageID,$VideoLanguageIdDictionary[$LanguageID],$AudioTrack
+	}
+#endregion
+}
+Process{
 #region	Mainline
 	$FI = [IO.FileInfo]::New($FullName)
 	if ($PathOut.Length -eq 0){
@@ -198,7 +197,7 @@ Function Run-FFmpeg(){
 		}
 	}else{
 		$DI = [IO.DirectoryInfo]::New($PathOut)
-		if(!$DI.Exists){Throw "PathOut Invalid, $PathOut"}
+		if(!$DI.Exists){Throw ('PathOut Invalid, {0}' -f $PathOut)}
 	}
 	if(!$FullLog -and !$Locked){
 		'Target Directory: {0}' -f $PathOut
@@ -211,9 +210,9 @@ Function Run-FFmpeg(){
 End{'--- Process Complete! ---'}
 
 <# Sample\Test commands
-(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -FullLog
-(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -LanguageID deu|Out-GridView
-(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -LanguageID Ita -FullLog|Out-File Set-VideoMediaLang.log
-gci c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\*.mp4|.\Set-VideoMediaLang.ps1 -DelIn
-.\Set-VideoMediaLangEx3.ps1 -FullName 'c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\Disable Copilot.mp4' -NA -AN 'Main'
+(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -FullLog
+(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -LanguageID deu|Out-GridView
+(GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -LanguageID Ita -FullLog|Out-File Set-VideoMediaLang.log
+gci c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\*.mp4|.\Set-VideoMediaLangEx.ps1 -DelIn
+.\Set-VideoMediaLangEx.ps1 -FullName 'c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\Disable Copilot.mp4' -NA -AN 'Main'
 #>
