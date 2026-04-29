@@ -1,11 +1,12 @@
 <#
 .NOTES
-	File Name:	Set-VideoMediaLang.ps1
-	Version:	Version: 1.4 - 2026/04/19
+	File Name:	Set-VideoMediaLangEx.ps1
+	Version:	Version: 1.5 - 2026/04/21
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	2025/06/20
 	Revision History:
+		V1.5 - 2026/04/21 - Added audio track name support
 		V1.4 - 2026/04/19 - Added input deletion switch
 		V1.3 - 2025/08/09 - Added ability to set target audio track#
 		V1.2 - 2025/08/08 - Added Video Language Dictionary json
@@ -51,6 +52,12 @@ assuming PowerShell security is set to RemoteSigned.
 .PARAMETER AudioTrack Alias: AT (Default is 0)
 	Optional, Zero-based audio track# to modify.
 
+.PARAMETER AudioTrackName Alias: AN
+	Optional Audio Track Title Default is 'Primary'
+
+.PARAMETER NameAudio Alias: NA
+	Optional, This switch enables Audio Track Naming
+	
 .PARAMETER FullLog Alias: FL
 	Optional, This switch will cause full FFmpeg logging to be shown.
 
@@ -86,6 +93,8 @@ Param(
 	[Parameter(HelpMessage='The output target directory')][Alias('PO')][String]$PathOut='',
 	[Parameter(HelpMessage='The output target language code')][Alias('AL')][String]$LanguageID = 'eng',
 	[Parameter(HelpMessage='The output target audio track(Zero Based)')][Alias('AT')][Int]$AudioTrack = 0,
+	[Parameter(HelpMessage='The output target audio track title')][Alias('AN')][String]$AudioTrackName = 'Primary',
+	[Parameter()][Alias('NA')][Switch]$NameAudio,
 	[Parameter()][Alias('FL')][Switch]$FullLog,
 	[Parameter()][Alias('DI')][Switch]$DelIn	
 	)
@@ -109,12 +118,12 @@ Function Resolve-CurrentLocation{
 }
 #endregion
 #region Startup Code
-	if(!(Get-Command $FFmpeg -ErrorAction SilentlyContinue)){throw "$FFmpeg not found on PATH."}
+	if(!(Get-Command $FFmpeg -ErrorAction SilentlyContinue)){throw ('{0} not found on PATH.' -f $FFmpeg)}
 	$JsonFile.Info = [IO.FileInfo]::new((Resolve-CurrentLocation -Path $JsonFile.File))
 	if(!$JsonFile.Info.Exists){Throw [System.IO.FileNotFoundException] ('JSON Language File: ({0}) Not Found!' -f $JsonFile.Info.FullName)}
 	$VideoLanguageIdDictionary = Import-VideoLanguageIdDictionary -VDF $JsonFile.Info.FullName
 	if(!$VideoLanguageIdDictionary.ContainsKey($LanguageID)){
-		Throw "Invalid LanguageID '$LanguageID'."
+		Throw ('Invalid LanguageID: {0}.' -f $LanguageID)
 	}
 	if(!$FullLog){
 		'Processing ...'
@@ -126,14 +135,37 @@ Process{
 #region Utility Functions
 Function Run-FFmpeg(){
 	$Prefix = '-hide_banner -loglevel error '
-	$StdArgs = '{0} "{1}" {2}{3} {4}{5} "{6}"' -f 
-		'-y -i',
-		$FI.FullName,
-		'-map 0 -c:a copy -c:v copy -metadata:s:a:',
-		$AudioTrack, 
-		'language=',
-		$LanguageID,
-		$(Join-Path -Path $PathOut -ChildPath $FI.Name)
+	$MetaCmd = '-metadata:s:a:{0}' -f $AudioTrack
+	$CmdLn = '-map 0 -c:a copy -c:v copy {0}' -f $MetaCmd
+	$Masks = [Ordered]@{
+		LangOnly = '{0} "{1}" {2} {3}{4} "{5}"'
+		LangName = '{0} "{1}" {2} {3}{4} {5} {6}"{7}" "{8}"'}
+	# NOTE: MaskArgs.* must remain [Ordered] to preserve format-string parameter order.		
+	$MaskArgs = [Ordered]@{
+		LangOnly = [Ordered]@{
+		    InputSwitch   = '-y -i'
+		    InputFile     = $FI.FullName
+		    CmdLine       = $CmdLn
+		    LangKey       = 'language='
+		    LangValue     = $LanguageID
+		    OutputFile    = Join-Path $PathOut $FI.Name
+		}
+		LangName = [Ordered]@{
+		    InputSwitch   = '-y -i'
+		    InputFile     = $FI.FullName
+		    CmdLine       = $CmdLn
+		    LangKey       = 'language='
+		    LangValue     = $LanguageID
+		    TitleMetaCmd  = $MetaCmd
+		    TitleKey      = 'title='
+		    TitleValue    = $AudioTrackName
+		    OutputFile    = Join-Path $PathOut $FI.Name
+		}
+	}
+	if(!$NameAudio){
+		$StdArgs = $Masks.LangOnly -f $($MaskArgs.LangOnly.Values)}
+	else{
+		$StdArgs = $Masks.LangName -f $($MaskArgs.LangName.Values)}
 	$ArgList = if(!$FullLog){$Prefix+$StdArgs}else{$StdArgs}
 	$Process = [System.Diagnostics.Process]::New()
 	$Process.StartInfo.FileName = $FFmpeg
@@ -183,4 +215,5 @@ End{'--- Process Complete! ---'}
 (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -LanguageID deu|Out-GridView
 (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLang.ps1 -LanguageID Ita -FullLog|Out-File Set-VideoMediaLang.log
 gci c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\*.mp4|.\Set-VideoMediaLang.ps1 -DelIn
+.\Set-VideoMediaLangEx3.ps1 -FullName 'c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\Disable Copilot.mp4' -NA -AN 'Main'
 #>
