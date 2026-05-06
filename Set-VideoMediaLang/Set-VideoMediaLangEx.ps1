@@ -14,18 +14,17 @@
 	 	V1.0 - 2025/06/20 - Original Wersion
 
 .SYNOPSIS
-	This script uses FFmpeg to easily set an audio track language of a supported video file(s)
+	This script uses FFmpeg to easily set an audio track language of supported video files
 	without rerendering.
 
 .DESCRIPTION
-	This script uses FFmpeg to easily set an audio track language of a supported video file(s)
+	This script uses FFmpeg to easily set an audio track language of supported video files
 	without rerendering. Input filenames may be input via the pipeline. The resulting output files
 	are named the same as the input, but are directed to another directory. The default output directory
-	will be created, if necessary. Any existing output files in the output directory are
-	overwritten. The FFmpeg audio track language is a 3-character ISO 639-2 Code,
-	the default is 'eng' (English). FFmpeg logging is restricted to errors only by default
-	and the filename of each processed file is shown instead. You may display full FFmpeg
-	logging by use of the -FullLog switch.
+	will be created, if necessary. Any existing output files in the output directory areoverwritten.
+	The FFmpeg audio track language is a 3-character ISO 639-2 Code,the defaultis 'eng' (English). 
+	FFmpeg logging is restricted to errors only by default and the filename of each processed file
+	is shown instead. You may display full FFmpeg logging by use of the -FullLog switch.
 
 ----------------------------------------------------------------------------------------
 Security Note: This is an unsigned script, Powershell security may require you run the
@@ -47,7 +46,6 @@ assuming PowerShell security is set to RemoteSigned.
 .PARAMETER LanguageID Alias: AL (Default is eng)
 	Optional, 3-character ISO 639-2 Language Code.
 	See: https://www.loc.gov/standards/iso639-2/php/code_list.php
-	A ISO639-2_Video_Language_Codes.json was added in v1.2
 
 .PARAMETER AudioTrack Alias: AT (Default is 0)
 	Optional, Zero-based audio track# to modify.
@@ -57,13 +55,13 @@ assuming PowerShell security is set to RemoteSigned.
 
 .PARAMETER NameAudio Alias: NA
 	Optional, This switch enables Audio Track Naming
-	
-.PARAMETER FullLog Alias: FL
-	Optional, This switch will cause full FFmpeg logging to be shown.
 
 .PARAMETER DelIn Alias: DI
 	Optional, This switch will cause input file deletion.
 	
+.PARAMETER FullLog Alias: FL
+	Optional, This switch will cause full FFmpeg logging to be shown.
+
 .INPUTS
 	The fully qualified filename of the input file.
 
@@ -95,9 +93,8 @@ Param(
 	[Parameter(HelpMessage='The output target audio track(Zero Based)')][Alias('AT')][Int]$AudioTrack = 0,
 	[Parameter(HelpMessage='The output target audio track title')][Alias('AN')][String]$AudioTrackName = 'Primary',
 	[Parameter()][Alias('NA')][Switch]$NameAudio,
-	[Parameter()][Alias('FL')][Switch]$FullLog,
-	[Parameter()][Alias('DI')][Switch]$DelIn	
-	)
+	[Parameter()][Alias('DI')][Switch]$DelIn,
+	[Parameter()][Alias('FL')][Switch]$FullLog)
 Begin{
 #region Variables
 $Locked = $False
@@ -113,7 +110,9 @@ Param([Parameter(Mandatory)][Alias('VDF')][String]$VideoDictionaryFile)
 }
 Function Resolve-CurrentLocation{
 	param([Parameter(Mandatory)][Alias('P')][String]$Path)
-	return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)
+	if($Path.StartsWith('.')){
+		return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)}
+	else{return $Path}
 }
 Function Run-FFmpeg(){
 	$Prefix = '-hide_banner -loglevel error '
@@ -127,23 +126,23 @@ Function Run-FFmpeg(){
 	# NOTE: MaskArgs.* must remain [Ordered] to preserve format-string parameter order.		
 	$MaskArgs = [Ordered]@{
 		LangOnly = [Ordered]@{
-		    InputSwitch   = $InputSwitch
-		    InputFile     = $FI.FullName
-		    CmdLine       = $CmdLn
-		    LangKey       = $LangKey
-		    LangValue     = $LanguageID
-		    OutputFile    = Join-Path $PathOut $FI.Name
+			InputSwitch   = $InputSwitch
+			InputFile     = $FI.FullName
+			CmdLine       = $CmdLn
+			LangKey       = $LangKey
+			LangValue     = $LanguageID
+			OutputFile    = Join-Path $PathOut $FI.Name
 		}
 		LangName = [Ordered]@{
-		    InputSwitch   = $InputSwitch
-		    InputFile     = $FI.FullName
-		    CmdLine       = $CmdLn
-		    LangKey       = $LangKey
-		    LangValue     = $LanguageID
-		    TitleMetaCmd  = $MetaCmd
-		    TitleKey      = 'title='
-		    TitleValue    = $AudioTrackName
-		    OutputFile    = Join-Path $PathOut $FI.Name
+			InputSwitch   = $InputSwitch
+			InputFile     = $FI.FullName
+			CmdLine       = $CmdLn
+			LangKey       = $LangKey
+			LangValue     = $LanguageID
+			TitleMetaCmd  = $MetaCmd
+			TitleKey      = 'title='
+			TitleValue    = $AudioTrackName
+			OutputFile    = Join-Path $PathOut $FI.Name
 		}
 	}
 	if(!$NameAudio){
@@ -213,6 +212,5 @@ End{'--- Process Complete! ---'}
 (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -FullLog
 (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -LanguageID deu|Out-GridView
 (GCI -Path "f:\Video\InternetArchive\SuperCar-1961\*.mkv")|.\Set-VideoMediaLangEx.ps1 -LanguageID Ita -FullLog|Out-File Set-VideoMediaLang.log
-gci c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\*.mp4|.\Set-VideoMediaLangEx.ps1 -DelIn
-.\Set-VideoMediaLangEx.ps1 -FullName 'c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\Disable Copilot.mp4' -NA -AN 'Main'
+gci c:\Users\RANDY\Documents\DVDFab\DVDFab12\FullDisc\Amazon\FB\*.mp4|.\Set-VideoMediaLangEx.ps1 -DelIn -NA -AN 'Main' 
 #>
