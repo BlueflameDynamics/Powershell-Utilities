@@ -114,35 +114,35 @@ Function Resolve-CurrentLocation{
 		return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)}
 	else{return $Path}
 }
-Function Run-FFmpeg(){
+Function Invoke-FFmpeg(){
 	$Prefix = '-hide_banner -loglevel error '
 	$MetaCmd = '-metadata:s:a:{0}' -f $AudioTrack
 	$CmdLn = '-map 0 -c:a copy -c:v copy {0}' -f $MetaCmd
-	$InputSwitch   = '-y -i'
-	$LangKey       = 'language='
+	$InputSwitch = '-y -i'
+	$LangKey = 'language='
 	$Masks = [Ordered]@{
 		LangOnly = '{0} "{1}" {2} {3}{4} "{5}"'
 		LangName = '{0} "{1}" {2} {3}{4} {5} {6}"{7}" "{8}"'}
 	# NOTE: MaskArgs.* must remain [Ordered] to preserve format-string parameter order.		
 	$MaskArgs = [Ordered]@{
 		LangOnly = [Ordered]@{
-			InputSwitch   = $InputSwitch
-			InputFile     = $FI.FullName
-			CmdLine       = $CmdLn
-			LangKey       = $LangKey
-			LangValue     = $LanguageID
-			OutputFile    = Join-Path $PathOut $FI.Name
+			InputSwitch = $InputSwitch
+			InputFile   = $FI.FullName
+			CmdLine     = $CmdLn
+			LangKey     = $LangKey
+			LangValue   = $LanguageID
+			OutputFile  = Join-Path $PathOut $FI.Name
 		}
 		LangName = [Ordered]@{
-			InputSwitch   = $InputSwitch
-			InputFile     = $FI.FullName
-			CmdLine       = $CmdLn
-			LangKey       = $LangKey
-			LangValue     = $LanguageID
-			TitleMetaCmd  = $MetaCmd
-			TitleKey      = 'title='
-			TitleValue    = $AudioTrackName
-			OutputFile    = Join-Path $PathOut $FI.Name
+			InputSwitch  = $InputSwitch
+			InputFile    = $FI.FullName
+			CmdLine      = $CmdLn
+			LangKey      = $LangKey
+			LangValue    = $LanguageID
+			TitleMetaCmd = $MetaCmd
+			TitleKey     = 'title='
+			TitleValue   = $AudioTrackName
+			OutputFile   = Join-Path $PathOut $FI.Name
 		}
 	}
 	if(!$NameAudio){
@@ -202,7 +202,7 @@ Process{
 		'Target Directory: {0}' -f $PathOut
 		$Locked = $True
 	}
-	$RV = Run-FFmpeg
+	$RV = Invoke-FFmpeg
 	if($FullLog){('{2}{0} End of File {0}{1}'-f ('-'*50),"`r`n",$RV.OutputText)}Else{$FI.Name}
 #endregion
 }
