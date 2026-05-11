@@ -44,10 +44,6 @@
     "Name": "Akan"
   },
   {
-    "Code": "akk",
-    "Name": "Akkadian"
-  },
-  {
     "Code": "alb",
     "Name": "Albanian"
   },
@@ -68,10 +64,6 @@
     "Name": "Amharic"
   },
   {
-    "Code": "ang",
-    "Name": "English, Old (ca.450-1100), Anglo"
-  },
-  {
     "Code": "anp",
     "Name": "Angika"
   },
@@ -82,10 +74,6 @@
   {
     "Code": "ara",
     "Name": "Arabic"
-  },
-  {
-    "Code": "arc",
-    "Name": "Official Aramaic (700-300 BCE); Imperial Aramaic (700-300 BCE)"
   },
   {
     "Code": "arg",
@@ -102,10 +90,6 @@
   {
     "Code": "arp",
     "Name": "Arapaho"
-  },
-  {
-    "Code": "art",
-    "Name": "Artificial languages"
   },
   {
     "Code": "arw",
@@ -300,10 +284,6 @@
     "Name": "Celtic languages"
   },
   {
-    "Code": "ces",
-    "Name": "Czech"
-  },
-  {
     "Code": "cha",
     "Name": "Chamorro"
   },
@@ -348,10 +328,6 @@
     "Name": "Cherokee"
   },
   {
-    "Code": "chu",
-    "Name": "Church Slavic; Old Slavonic; Church Slavonic; Old Bulgarian; Old Church Slavonic"
-  },
-  {
     "Code": "chv",
     "Name": "Chuvash"
   },
@@ -380,18 +356,6 @@
     "Name": "Corsican"
   },
   {
-    "Code": "cpe",
-    "Name": "Creoles and pidgins, English based"
-  },
-  {
-    "Code": "cpf",
-    "Name": "Creoles and pidgins, French-based"
-  },
-  {
-    "Code": "cpp",
-    "Name": "Creoles and pidgins, Portuguese-based"
-  },
-  {
     "Code": "cre",
     "Name": "Cree"
   },
@@ -400,20 +364,12 @@
     "Name": "Crimean Tatar; Crimean Turkish"
   },
   {
-    "Code": "crp",
-    "Name": "Creoles and pidgins"
-  },
-  {
     "Code": "csb",
     "Name": "Kashubian"
   },
   {
     "Code": "cus",
     "Name": "Cushitic languages"
-  },
-  {
-    "Code": "cym",
-    "Name": "Welsh"
   },
   {
     "Code": "cze",
@@ -476,10 +432,6 @@
     "Name": "Duala"
   },
   {
-    "Code": "dum",
-    "Name": "Dutch, Middle (ca.1050-1350)"
-  },
-  {
     "Code": "dut",
     "Name": "Dutch; Flemish"
   },
@@ -496,40 +448,20 @@
     "Name": "Efik"
   },
   {
-    "Code": "egy",
-    "Name": "Egyptian (Ancient)"
-  },
-  {
     "Code": "eka",
     "Name": "Ekajuk"
   },
   {
     "Code": "ell",
-    "Name": "Greek, Modern (1453-)"
-  },
-  {
-    "Code": "elx",
-    "Name": "Elamite"
+    "Name": "Greek"
   },
   {
     "Code": "eng",
     "Name": "English"
   },
   {
-    "Code": "enm",
-    "Name": "English, Middle (1100-1500)"
-  },
-  {
-    "Code": "epo",
-    "Name": "Esperanto"
-  },
-  {
     "Code": "est",
     "Name": "Estonian"
-  },
-  {
-    "Code": "eus",
-    "Name": "Basque"
   },
   {
     "Code": "ewe",
@@ -584,14 +516,6 @@
     "Name": "French"
   },
   {
-    "Code": "frm",
-    "Name": "French, Middle (ca.1400-1600)"
-  },
-  {
-    "Code": "fro",
-    "Name": "French, Old (842-ca.1400)"
-  },
-  {
     "Code": "frr",
     "Name": "Northern Frisian"
   },
@@ -622,10 +546,6 @@
   {
     "Code": "gba",
     "Name": "Gbaya"
-  },
-  {
-    "Code": "gem",
-    "Name": "Germanic languages"
   },
   {
     "Code": "geo",
@@ -660,14 +580,6 @@
     "Name": "Manx"
   },
   {
-    "Code": "gmh",
-    "Name": "German, Middle High (ca.1050-1500)"
-  },
-  {
-    "Code": "goh",
-    "Name": "German, Old High (ca.750-1050)"
-  },
-  {
     "Code": "gon",
     "Name": "Gondi"
   },
@@ -676,20 +588,12 @@
     "Name": "Gorontalo"
   },
   {
-    "Code": "got",
-    "Name": "Gothic"
-  },
-  {
     "Code": "grb",
     "Name": "Grebo"
   },
   {
-    "Code": "grc",
-    "Name": "Greek, Ancient (to 1453)"
-  },
-  {
     "Code": "gre",
-    "Name": "Greek, Modern (1453-)"
+    "Name": "Greek"
   },
   {
     "Code": "grn",
@@ -744,10 +648,6 @@
     "Name": "Hindi"
   },
   {
-    "Code": "hit",
-    "Name": "Hittite"
-  },
-  {
     "Code": "hmn",
     "Name": "Hmong; Mong"
   },
@@ -772,10 +672,6 @@
     "Name": "Hupa"
   },
   {
-    "Code": "hye",
-    "Name": "Armenian"
-  },
-  {
     "Code": "iba",
     "Name": "Iban"
   },
@@ -786,10 +682,6 @@
   {
     "Code": "ice",
     "Name": "Icelandic"
-  },
-  {
-    "Code": "ido",
-    "Name": "Ido"
   },
   {
     "Code": "iii",
@@ -804,16 +696,8 @@
     "Name": "Inuktitut"
   },
   {
-    "Code": "ile",
-    "Name": "Interlingue; Occidental"
-  },
-  {
     "Code": "ilo",
     "Name": "Iloko"
-  },
-  {
-    "Code": "ina",
-    "Name": "Interlingua (International Auxiliary Language Association)"
   },
   {
     "Code": "inc",
@@ -956,10 +840,6 @@
     "Name": "Kimbundu"
   },
   {
-    "Code": "kok",
-    "Name": "Konkani (macrolanguage)"
-  },
-  {
     "Code": "kom",
     "Name": "Komi"
   },
@@ -1077,7 +957,7 @@
   },
   {
     "Code": "lui",
-    "Name": "Luiseno"
+    "Name": "Luiseño"
   },
   {
     "Code": "lun",
@@ -1156,10 +1036,6 @@
     "Name": "Mende"
   },
   {
-    "Code": "mga",
-    "Name": "Irish, Middle (900-1200)"
-  },
-  {
     "Code": "mic",
     "Name": "Mi'kmaq; Micmac"
   },
@@ -1220,10 +1096,6 @@
     "Name": "Malay (macrolanguage)"
   },
   {
-    "Code": "mul",
-    "Name": "Multiple languages"
-  },
-  {
     "Code": "mun",
     "Name": "Munda languages"
   },
@@ -1238,10 +1110,6 @@
   {
     "Code": "mwr",
     "Name": "Marwari"
-  },
-  {
-    "Code": "mya",
-    "Name": "Burmese"
   },
   {
     "Code": "myn",
@@ -1273,19 +1141,15 @@
   },
   {
     "Code": "nbl",
-    "Name": "Ndebele, South; South Ndebele"
+    "Name": "South Ndebele"
   },
   {
     "Code": "nde",
-    "Name": "Ndebele, North; North Ndebele"
+    "Name": "North Ndebele"
   },
   {
     "Code": "ndo",
     "Name": "Ndonga"
-  },
-  {
-    "Code": "nds",
-    "Name": "Low German; Low Saxon; German, Low; Saxon, Low"
   },
   {
     "Code": "nep",
@@ -1293,7 +1157,7 @@
   },
   {
     "Code": "new",
-    "Name": "Nepal Bhasa; Newari"
+    "Name": "Nepal Bhasa; Newar; Newari"
   },
   {
     "Code": "nia",
@@ -1313,19 +1177,15 @@
   },
   {
     "Code": "nno",
-    "Name": "Norwegian Nynorsk; Nynorsk, Norwegian"
+    "Name": "Norwegian Nynorsk"
   },
   {
     "Code": "nob",
-    "Name": "Bokm?l, Norwegian; Norwegian Bokm?l"
+    "Name": "Norwegian Bokmål"
   },
   {
     "Code": "nog",
     "Name": "Nogai"
-  },
-  {
-    "Code": "non",
-    "Name": "Norse, Old"
   },
   {
     "Code": "nor",
@@ -1342,10 +1202,6 @@
   {
     "Code": "nub",
     "Name": "Nubian languages"
-  },
-  {
-    "Code": "nwc",
-    "Name": "Classical Newari; Old Newari; Classical Nepal Bhasa"
   },
   {
     "Code": "nya",
@@ -1392,10 +1248,6 @@
     "Name": "Ossetian; Ossetic"
   },
   {
-    "Code": "ota",
-    "Name": "Turkish, Ottoman (1500-1928)"
-  },
-  {
     "Code": "oto",
     "Name": "Otomian languages"
   },
@@ -1406,10 +1258,6 @@
   {
     "Code": "pag",
     "Name": "Pangasinan"
-  },
-  {
-    "Code": "pal",
-    "Name": "Pahlavi"
   },
   {
     "Code": "pam",
@@ -1428,20 +1276,12 @@
     "Name": "Palauan"
   },
   {
-    "Code": "peo",
-    "Name": "Persian, Old (ca.600-400 B.C.)"
-  },
-  {
     "Code": "per",
     "Name": "Persian"
   },
   {
     "Code": "phi",
     "Name": "Philippine languages"
-  },
-  {
-    "Code": "phn",
-    "Name": "Phoenician"
   },
   {
     "Code": "pli",
@@ -1462,10 +1302,6 @@
   {
     "Code": "pra",
     "Name": "Prakrit languages"
-  },
-  {
-    "Code": "pro",
-    "Name": "Proven?al, Old (to 1500);Occitan, Old (to 1500)"
   },
   {
     "Code": "pus",
@@ -1572,10 +1408,6 @@
     "Name": "Semitic languages"
   },
   {
-    "Code": "sga",
-    "Name": "Irish, Old (to 900)"
-  },
-  {
     "Code": "sgn",
     "Name": "Sign Languages"
   },
@@ -1676,10 +1508,6 @@
     "Name": "Spanish; Castilian"
   },
   {
-    "Code": "sqi",
-    "Name": "Albanian"
-  },
-  {
     "Code": "srd",
     "Name": "Sardinian"
   },
@@ -1716,20 +1544,12 @@
     "Name": "Susu"
   },
   {
-    "Code": "sux",
-    "Name": "Sumerian"
-  },
-  {
     "Code": "swa",
     "Name": "Swahili (macrolanguage)"
   },
   {
     "Code": "swe",
     "Name": "Swedish"
-  },
-  {
-    "Code": "syc",
-    "Name": "Classical Syriac"
   },
   {
     "Code": "syr",
@@ -1798,10 +1618,6 @@
   {
     "Code": "tkl",
     "Name": "Tokelau"
-  },
-  {
-    "Code": "tlh",
-    "Name": "Klingon; tlhIngan-Hol"
   },
   {
     "Code": "tli",
@@ -1912,10 +1728,6 @@
     "Name": "Vietnamese"
   },
   {
-    "Code": "vol",
-    "Name": "Volap?k"
-  },
-  {
     "Code": "vot",
     "Name": "Votic"
   },
@@ -1984,10 +1796,6 @@
     "Name": "Zapotec"
   },
   {
-    "Code": "zbl",
-    "Name": "Blissymbols; Blissymbolics; Bliss"
-  },
-  {
     "Code": "zen",
     "Name": "Zenaga"
   },
@@ -1998,10 +1806,6 @@
   {
     "Code": "zha",
     "Name": "Zhuang; Chuang"
-  },
-  {
-    "Code": "zho",
-    "Name": "Chinese"
   },
   {
     "Code": "znd",
