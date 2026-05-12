@@ -8,10 +8,6 @@
     "Name": "Abkhazian"
   },
   {
-    "Code": "ace",
-    "Name": "Achinese"
-  },
-  {
     "Code": "ach",
     "Name": "Acoli"
   },
@@ -258,10 +254,6 @@
   {
     "Code": "cad",
     "Name": "Caddo"
-  },
-  {
-    "Code": "cai",
-    "Name": "Central American Indian languages"
   },
   {
     "Code": "car",
@@ -1124,10 +1116,6 @@
     "Name": "Nahuatl languages"
   },
   {
-    "Code": "nai",
-    "Name": "North American Indian languages"
-  },
-  {
     "Code": "nap",
     "Name": "Neapolitan"
   },
@@ -1368,10 +1356,6 @@
     "Name": "Yakut"
   },
   {
-    "Code": "sai",
-    "Name": "South American Indian languages"
-  },
-  {
     "Code": "sal",
     "Name": "Salishan languages"
   },
@@ -1406,10 +1390,6 @@
   {
     "Code": "sem",
     "Name": "Semitic languages"
-  },
-  {
-    "Code": "sgn",
-    "Name": "Sign Languages"
   },
   {
     "Code": "shn",
