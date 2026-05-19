@@ -149,7 +149,7 @@ PSRun3.exe -help
 |Exists.ps1|.NET Directory/File existence test function|
 |Invoke-CopyFile.ps1|Cmdlet\\Library to copy a file and display a Progress Window.|
 |MetadataIndexLib.ps1|MetaData Index Access Functions|
-|Set-TVTitles.ps1|Cmdlet to set the title of MP4 TV/Movie files|
+|Set-TVTitles.ps1|Cmdlet to set the title of MP4 TV/Movie files, renames files, or reports meta data|
 
 
 
