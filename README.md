@@ -63,7 +63,7 @@ PSRun3.exe -help
 |Filename|Description|
 |-|-|
 |BlueflameDynamics.IconTools.dll|Icon Utils Library|
-|Create-PSListing.ps1|Powershell Script Listing Cmdlet with WordWrap & Token Report|
+|Create-PSListing.ps1|Powershell Script Listing Cmdlet with WordWrap \& Token Report|
 |Create-PSListing.SampleListing.pdf|Sample Powershell Script Listing|
 |Create-PSListingGUI.json|Powershell Script Listing GUI configuration json|
 |Create-PSListingGUI.ps1|Powershell Listing GUI front end|
@@ -137,6 +137,21 @@ PSRun3.exe -help
 |Filename|Description|
 |-|-|
 |Set-OpticalDriveState.ps1|Cmdlet to set\\get Optical Drive State|
+
+[Set-TVTitles Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Set-TVTitles)
+
+|Filename|Description|
+|-|-|
+|BlueflameDynamics.VideoTags.dll|Custom MP4 Tag reader|
+|Microsoft.WindowsAPICodePack.dll|Microsoft.WindowsAPICodePack v1.1.8|
+|Microsoft.WindowsAPICodePack.Shell.dll|Microsoft.WindowsAPICodePack.Shell v1.1.8|
+|taglib-sharp.dll|TagLib# v2.1.0 (**Warning:** v2.2+ Corrupts Apple Atoms)|
+|Exists.ps1|.NET Directory/File existence test function|
+|Invoke-CopyFile.ps1|Cmdlet\\Library to copy a file and display a Progress Window.|
+|MetadataIndexLib.ps1|MetaData Index Access Functions|
+|Set-TVTitles.ps1|Cmdlet to set the title of MP4 TV/Movie files|
+
+
 
 [Set-VideoMediaLang Cmdlet](https://github.com/BlueflameDynamics/Powershell-Utilities/tree/main/Set-VideoMediaLang)
 
