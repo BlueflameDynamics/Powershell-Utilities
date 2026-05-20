@@ -142,7 +142,6 @@ PSRun3.exe -help
 
 |Filename|Description|
 |-|-|
-|BlueflameDynamics.VideoTags.dll|Custom MP4 Tag reader|
 |Microsoft.WindowsAPICodePack.dll|Microsoft.WindowsAPICodePack v1.1.8|
 |Microsoft.WindowsAPICodePack.Shell.dll|Microsoft.WindowsAPICodePack.Shell v1.1.8|
 |taglib-sharp.dll|TagLib# v2.1.0 (**Warning:** v2.2+ Corrupts Apple Atoms)|
