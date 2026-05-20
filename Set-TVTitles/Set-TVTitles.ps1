@@ -1,7 +1,7 @@
 <#
 .NOTES
 	File Name:	Set-TVTitles.ps1
-	Version:	1.5b - 11/17/2023
+	Version:	2.0 - 05/19/2026
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	02/03/2023
@@ -142,7 +142,7 @@ Begin {
 	Import-Module -Name .\Invoke-CopyFile.ps1 -Force
 	Import-Module -Name .\MetadataIndexLib.ps1 -Force
 	Import-Module -Name .\TagLib-Sharp.dll -Force <#Note: Requires V2.1.0 as V2.3.0 Currupts files.#>
-	Import-Module -Name .\BlueflameDynamics.VideoTags.dll -Force
+	Import-Module -Name .\Microsoft.WindowsAPICodePack.Shell.dll -Force
 	#endregion
 
 	#region Custom Enums
@@ -287,7 +287,10 @@ Process{
 
 	ForEach ($File in $FileList){
 		$VideoTags = Get-VideoTags -Path $File.FullName
-		$MP4Tags = [BlueflameDynamics.VideoTags]::GetVideoTags($File.FullName)
+        $ObjVF = [Microsoft.WindowsAPICodePack.Shell.ShellFile]::FromParsingName($File.FullName)
+		$MP4Tags = [PSCustomObject][Ordered]@{
+            ChannelCount = $ObjVF.Properties.System.Audio.ChannelCount.Value
+            SampleRate = $ObjVF.Properties.System.Audio.SampleRate.Value}
 		$Mediafile = [TagLib.File]::Create($File.FullName)
 		[TagLib.Mpeg4.AppleTag]$AppleTag = $MediaFile.GetTag([TagLib.TagTypes]::Apple, 1)
 		$RowData = [PSCustomObject][Ordered]@{Directory = $File.Directory;File = $File.Name}
@@ -347,8 +350,8 @@ Process{
 		$Frame = [System.Drawing.Size]::New($VideoTags['Frame Width'],$VideoTags['Frame Height'])
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Frame Size' -Value $Frame
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Frame Rate' -Value $VideoTags['Frame Rate']
-		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Channels' -Value $MP4Tags.Audio.ChannelCount
-		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Sample Rate' -Value ('{0}Khz' -f $MP4Tags.Audio.SampleRate)
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Channels' -Value $MP4Tags.ChannelCount
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Sample Rate' -Value ('{0}Khz' -f $MP4Tags.SampleRate)
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Video Data Rate' -Value $VideoTags['Data rate']
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Bit Rate' -Value $VideoTags['Bit rate']
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Size' -Value $VideoTags['Size']
