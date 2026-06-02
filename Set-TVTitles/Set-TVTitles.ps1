@@ -1,10 +1,15 @@
 <#
 .NOTES
 	File Name:	Set-TVTitles.ps1
-	Version:	2.0 - 05/19/2026
+	Version:	2.1 - 2026/05/29
 	Author:		Randy Turner
 	Email:		turner.randy21@yahoo.com
 	Created:	02/03/2023
+	-------------------------------------
+Revision History:
+V2.1 - 2026/05/29 - Added Aspect Ratios, CodecID, & Language
+V2.0 - 2026/05/19 - Replaced VideoTags.dll with Microsoft.WindowsAPICodePack.dll/Microsoft.WindowsAPICodePack.Shell.dll
+v1.0 - 2023/02/03 - Original Release
 
 .SYNOPSIS
 	This Script will list the TV meta tags for m4v & mp4 files,
@@ -39,8 +44,9 @@
 
 .COMPONENT
 	Minimum Required Components: 
-	TagLibSharp.dll (v2.1.0.0), BlueflameDynamics.VideoTags.dll (v1.0.0),
-	Microsoft.WindowsAPICodePack.dll (v1.1.5), Microsoft.WindowsAPICodePack.Shell.dll (v1.1.5)
+	MediaInfo CLI renamed MediaInfoCLI.exe to distinguish from the GUI version.
+	TagLib-Sharp.dll (v2.1.0.0),
+	Microsoft.WindowsAPICodePack.dll (v1.1.8), Microsoft.WindowsAPICodePack.Shell.dll (v1.1.8)
 
 .PARAMETER MediaDirectory Alias: Dir
 	Required, This is the directory containing the input files to process
@@ -135,13 +141,12 @@ DynamicParam{
 	# When done building dynamic parameters, return dictionary
 	return $RuntimeParameterDictionary
 }
-
-Begin {
+Begin{
 	#region Module Imports		
 	Import-Module -Name .\Exists.ps1 -Force
 	Import-Module -Name .\Invoke-CopyFile.ps1 -Force
 	Import-Module -Name .\MetadataIndexLib.ps1 -Force
-	Import-Module -Name .\TagLib-Sharp.dll -Force <#Note: Requires V2.1.0 as V2.3.0 Currupts files.#>
+	Import-Module -Name .\TagLib-Sharp.dll -Force <#Note: Requires V2.1.0 as V2.2+ Currupts files.#>
 	Import-Module -Name .\Microsoft.WindowsAPICodePack.Shell.dll -Force
 	#endregion
 
@@ -265,15 +270,112 @@ Begin {
 			$Number = [Int]$Array.Data[3]}
 		Return $Number
 	}
-	#endregion
 
-	#region Get Script Parameter ValidValues
-	$MyParam=($MyInvocation.MyCommand).Parameters
-	$Modes=$MyParam['Mode'].Attributes.ValidValues
-	$ModeIdx=[Array]::IndexOf($Modes,$Mode)
-	#endregion
-}
+	Function Get-GCD{
+	<#
+	.SYNOPSIS
+		Calculates the Greatest Common Divisor (GCD) of two integers.
 
+	.DESCRIPTION
+		Uses the Euclidean algorithm to find the GCD of two numbers.
+		Handles negative numbers and zero inputs safely.
+
+	.PARAMETER a
+		The first integer.
+
+	.PARAMETER b
+		The second integer.
+
+	.EXAMPLE
+		Get-GCD 54 24
+		# Output: 6
+
+	.EXAMPLE
+		Get-GCD -a -48 -b 18
+		# Output: 6
+	#>
+
+		param (
+			[Parameter(Mandatory)][int]$a,
+			[Parameter(Mandatory)][int]$b
+		)
+
+		# Convert to absolute values to handle negatives
+		$a = [math]::Abs($a)
+		$b = [math]::Abs($b)
+
+		# Edge case: if either number is zero, return the other
+		if ($a -eq 0) {return $b}
+		if ($b -eq 0) {return $a}
+
+		# Euclidean algorithm loop
+		while ($b -ne 0) {
+			$temp = $b
+			$b = $a % $b
+			$a = $temp
+		}
+
+		return $a
+	}
+
+	Function Get-DAR {
+	<#
+	.SYNOPSIS
+		Calculates the Display Aspect Ratio (DAR) using frame size and pixel aspect ratio.
+
+	.DESCRIPTION
+		DAR = (Width * PAR_H) / (Height * PAR_V)
+		Returns both the decimal DAR and the simplified integer ratio.
+
+	.PARAMETER Width
+		Encoded frame width in pixels.
+
+	.PARAMETER Height
+		Encoded frame height in pixels.
+
+	.PARAMETER PAR_H
+		Pixel Aspect Ratio horizontal component.
+
+	.PARAMETER PAR_V
+		Pixel Aspect Ratio vertical component.
+
+	.EXAMPLE
+		Get-DAR -Width 720 -Height 404 -PAR_H 5959 -PAR_V 6075
+	#>
+
+	param(
+		[Parameter(Mandatory)][int]$Width,
+		[Parameter(Mandatory)][int]$Height,
+		[Parameter(Mandatory)][int]$PAR_H,
+		[Parameter(Mandatory)][int]$PAR_V
+	)
+
+	# Compute DAR as a floating-point value
+	$DAR = ($Width * $PAR_H) / ($Height * $PAR_V)
+
+	# Compute simplified integer ratio
+	$Num = $Width * $PAR_H
+	$Den = $Height * $PAR_V
+	$GCD = Get-GCD $Num $Den
+
+	$NumS = [int]($Num / $GCD)
+	$DenS = [int]($Den / $GCD)
+
+	# Return a formatted object
+	return [PSCustomObject][Ordered]@{
+		Decimal = ('{0:F2}:1' -f $DAR)
+		Ratio   = ('{0}:{1}' -f $NumS, $DenS)
+		Display = ('{0:F2}:1/{1}:{2}' -f $DAR, $NumS, $DenS)
+		}
+	}
+	    #endregion
+
+	    #region Get Script Parameter ValidValues
+	    $MyParam=($MyInvocation.MyCommand).Parameters
+	    $Modes=$MyParam['Mode'].Attributes.ValidValues
+	    $ModeIdx=[Array]::IndexOf($Modes,$Mode)
+	    #endregion
+	}
 Process{
 	$Output = @()
 	$ContentRatingOrg = -join ($(if($ModeIdx -eq [OpMode]::Movies){'MPAA'}else{'US-TV'}),' Rating')
@@ -287,10 +389,24 @@ Process{
 
 	ForEach ($File in $FileList){
 		$VideoTags = Get-VideoTags -Path $File.FullName
-        $ObjVF = [Microsoft.WindowsAPICodePack.Shell.ShellFile]::FromParsingName($File.FullName)
+		$ObjVF = [Microsoft.WindowsAPICodePack.Shell.ShellFile]::FromParsingName($File.FullName)
+
+		# Split when a lowercase letter is followed by an uppercase letter
+		# e.g. 'EnglishEnglish' -> 'English','English'
+		$LangRaw = MediaInfoCLI.exe --Inform='Audio;%Language/String%' $File.FullName
+		$LangRaw = $LangRaw -replace '\r?\n','' # strip CRLF just to be clean
+		$Matches = [Regex]::Matches($LangRaw,'[A-Z][a-z]+')
+
 		$MP4Tags = [PSCustomObject][Ordered]@{
-            ChannelCount = $ObjVF.Properties.System.Audio.ChannelCount.Value
-            SampleRate = $ObjVF.Properties.System.Audio.SampleRate.Value}
+			ChannelCount = $ObjVF.Properties.System.Audio.ChannelCount.Value
+			SampleRate = $ObjVF.Properties.System.Audio.SampleRate.Value
+			CodecID = MediaInfoCLI.exe --Inform='General;%CodecID%' $File.FullName
+			Language = $Matches.Value
+			PixelAspectRatio = [PSCustomObject][Ordered]@{
+				Horizontal = $ObjVF.Properties.System.Video.HorizontalAspectRatio.Value
+				Vertical = $ObjVF.Properties.System.Video.VerticalAspectRatio.Value}
+			}
+
 		$Mediafile = [TagLib.File]::Create($File.FullName)
 		[TagLib.Mpeg4.AppleTag]$AppleTag = $MediaFile.GetTag([TagLib.TagTypes]::Apple, 1)
 		$RowData = [PSCustomObject][Ordered]@{Directory = $File.Directory;File = $File.Name}
@@ -299,6 +415,7 @@ Process{
 			Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'New Filename' -Value $Null}
 
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Media Type' -Value (Get-MediaType)
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Media CodecID' -Value $MP4Tags.CodecID
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Images' -Value $Mediafile.Tag.Pictures.Count
 		
 		if($ModeIdx -eq [OpMode]::TVShows){
@@ -345,9 +462,20 @@ Process{
 			Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Artists' -Value $Mediafile.Tag.Artists}
 		if($Mediafile.Tag.Genres.Count -gt 0){
 			Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Genre' -Value $Mediafile.Tag.Genres}
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Language' -Value $MP4Tags.Language
 		if($VideoTags['Rating'] -ne 'Unrated'){
 			Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Rating' -Value $VideoTags['Rating']}
 		$Frame = [System.Drawing.Size]::New($VideoTags['Frame Width'],$VideoTags['Frame Height'])
+		# add AspectRatio
+		$DAR = Get-DAR -Width $Frame.Width -Height $Frame.Height `
+					   -PAR_H $MP4Tags.PixelAspectRatio.Horizontal `
+					   -PAR_V $MP4Tags.PixelAspectRatio.Vertical
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Display Aspect Ratio' -Value $DAR.Display
+		$GCD = Get-GCD $Frame.Width $Frame.Height
+		$AspectRatio = "{0}:{1}" -f $MP4Tags.PixelAspectRatio.Horizontal,$MP4Tags.PixelAspectRatio.Vertical
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Pixel Aspect Ratio' -Value $AspectRatio
+		$AspectRatio = "{0:F2}:1/{1}:{2}" -f ($Frame.Width/$Frame.Height),($Frame.Width/$GCD),($Frame.Height/$GCD)
+		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Frame Aspect Ratio' -Value $AspectRatio
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Frame Size' -Value $Frame
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Frame Rate' -Value $VideoTags['Frame Rate']
 		Add-Member -InputObject $RowData -MemberType NoteProperty -Name 'Audio Channels' -Value $MP4Tags.ChannelCount
@@ -395,7 +523,6 @@ Process{
 		$Output += $RowData
 	}
 }
-
 End{if(($ModeIdx -eq [OpMode]::TVShows -and $ApplyFix -eq $False) -or $ModeIdx -eq [OpMode]::Movies){$Output}}
 
 <# Test Commands
