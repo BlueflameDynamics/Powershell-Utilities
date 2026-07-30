@@ -2,11 +2,12 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 2.1 - 2026/02/25
+Version: 2.2 - 2026/07/26
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
 Revision History:
+V2.2 - 2026/07/26 - Added Checked item support.
 V2.1 - 2026/02/25 - Added After Selection AutoClose option.
 V2.0 - 2026/02/05 - Changed Registry Library
 v1.0 - 2016/04/01 - Original Release
@@ -145,7 +146,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.1 - 2026/02/25'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.2 - 2026/07/26'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -213,7 +214,7 @@ function Get-ShortcutKey{
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet(
 			'Open Playlist','New Playlist','Edit Playlist','Reload Playlist','Exit','Find','Find Next','Font Settings',
-			'Help','About','Lock Volume','Save Settings','Delete Settings','Host Information','Reset Column Width','Info')]
+			'Help','About','Lock Volume','Save Settings','Delete Settings','Host Information','Reset Column Width','Info','Play Checked')]
 		[String]$Mode)
 
 	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
@@ -237,6 +238,7 @@ function Get-ShortcutKey{
 		13 {$WFK::Control -bor $WFK::F1}
 		14 {$WFK::Control -bor $WFK::R}
 		15 {$WFK::Alt -bor $WFK::I}
+		16 {$WFK::Alt -bor $WFK::C}
 		default {$WFK::None}
 	}
 }
@@ -516,21 +518,33 @@ function Invoke-Playlist{
 		$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Disable
 		$Script:PausePlayback = `
 		$Script:StopPlayback = $False
+		$Item = [System.Windows.Forms.ListViewItem]::New()
 		for($C=$ListView1.SelectedItems[0].Index;$C -lt $ListView1.Items.Count;$C++){
-			$ListView1.Items[$C].Selected = `
-			$ListView1.Items[$C].Focused = $True
-			$ListView1.Items[$C].EnsureVisible()
-			$LblStatus.Text = 'Now Playing:  {0}' -f $ListView1.SelectedItems[0].Subitems[[LvwColumn]::File].Text
-			Invoke-AudioFile -Path $ListView1.Items[$C].Text
+			if($ListView1.CheckBoxes){
+				$C = if($C -eq 0){
+						$Inx = 0
+						$ListView1.CheckedIndices[0]
+						}
+					 else{
+							$Inx += 1
+							$ListView1.CheckedIndices[$Inx]
+						 }
+			}
+			$Item = $ListView1.Items[$C]
+			$Item.Selected = `
+			$Item.Focused = $True
+			$Item.EnsureVisible()
+			$LblStatus.Text = 'Now Playing:  {0}' -f $Item.Subitems[[LvwColumn]::File].Text
+			Invoke-AudioFile -Path $Item.Text
 			if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
 			#Loopback Control		
 			if($CheckBoxes[[CheckboxID]::Loop].Checked){
 				# AutoClose, Last Item
-				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked)){
+				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
 					Invoke-Command -ScriptBlock $Exit_Click
 					break}
 				# End-of-list behavior
-				if(!$AutoClose -and $C -eq $ListView1.Items.Count -1){
+				if(!$AutoClose -and ($C -eq $ListView1.Items.Count -1 -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
 					$C = -1}
 			}
 		}
@@ -649,8 +663,9 @@ function Show-MainForm{
 	$InitialFormWindowState = [Windows.Forms.FormWindowState]::Normal
 	# Control Arrays
 	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 4
-	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
+	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
+	$OptionMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 1
 	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$HelpMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
 	$LvwCtxMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 9
@@ -739,6 +754,8 @@ function Show-MainForm{
 
 	$Host_Click = {Show-HostInfo}
 
+	$PlayChecked = {$this.Checked = !$this.Checked;	$ListView1.CheckBoxes = $this.Checked}
+
 	$Form_BringToTop = {
 		$This.TopMost = $True
 		$This.BringToFront()
@@ -826,6 +843,9 @@ function Show-MainForm{
 	$FileMenuItems|ForEach-Object{$_.Image = $X[$X.IndexOfKey($_.Text)]}
 	Remove-Variable -Name X
 
+	Set-MenuItem (Split-EnumNames -Enum ([OptionMenuItem])) $OptionMenuItems $MainMenuItemSize 'OptionMenuItem'
+	$OptionMenuItems[[OptionMenuItem]::PlayChecked].Add_Click($PlayChecked)
+
 	Set-MenuItem (Split-EnumNames -Enum ([ToolMenuItem])) $ToolMenuItems $MainMenuItemSize 'ToolMenuItem'
 	$ToolMenuItems[[ToolMenuItem]::ResetColumnWidth].Add_Click({Set-ListViewColumnWidths})
 	$ToolMenuItems[[ToolMenuItem]::FontSettings].Add_Click($FontSettings_Click)
@@ -842,6 +862,7 @@ function Show-MainForm{
 
 	Set-MenuItem (Split-EnumNames -Enum ([MainMenuItem])) $MainMenuItems $MainMenuItemSize 'MainMenuItem' -SetSizeOff -NoHotKeys
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.AddRange($FileMenuItems)
+	$MainMenuItems[[MainMenuItem]::Options].DropDownItems.AddRange($OptionMenuItems)
 	$MainMenuItems[[MainMenuItem]::Tools].DropDownItems.AddRange($ToolMenuItems)
 	$MainMenuItems[[MainMenuItem]::Help].DropDownItems.AddRange($HelpMenuItems)
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Exit,$FileMenuBar[1])

@@ -8,6 +8,7 @@ $MyEnums = @(
 [MainMenuItem],
 [MediaButton],
 [MediaIcon],
+[OptionMenuItem]
 [ToolMenuItem],
 [RegistryKey]
 )
@@ -16,6 +17,7 @@ Enum CheckboxID{
 	Loop
 	AutoClose
 	Recurse
+	AfterSelected
 }
 
 Enum FileMenuItem{
@@ -26,6 +28,10 @@ Enum FileMenuItem{
 	Find
 	FindNext
 	Exit
+}
+
+Enum OptionMenuItem{
+	PlayChecked
 }
 
 Enum HelpMenuItem{
@@ -59,6 +65,7 @@ Enum LvwCtxItem{
 
 Enum MainMenuItem{
 	File
+	Options
 	Tools
 	Help
 }
