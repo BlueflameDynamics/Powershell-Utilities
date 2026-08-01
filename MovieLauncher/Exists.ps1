@@ -45,8 +45,45 @@ function Test-Exists{
 		}
 }
 function Resolve-CurrentLocation{
-	param([Parameter(Mandatory)][Alias('P')][String]$Path)
-	return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)
+	param([Parameter(Mandatory)][Alias('P')][string]$Path)
+
+	# Get current location as string
+	$curr = (Get-Location).ToString()
+
+	# Try to interpret current location as a URI
+	$uri = $null
+	if ([System.Uri]::TryCreate($curr, [System.UriKind]::Absolute, [ref]$uri)) {
+
+		if ($uri.IsFile) {
+			# File URI → convert to Windows path
+			$base = $uri.LocalPath
+
+			# Combine using Windows separator
+			return "{0}\{1}" -f $base, (Split-Path -Path $Path -Leaf)
+		}
+		else {
+			# Non-file URI → build a new URI relative to the current one
+			$leaf = (Split-Path -Path $Path -Leaf)
+
+			# System.Uri handles slash rules automatically
+			$newUri = [System.Uri]::new($uri, $leaf)
+
+			return $newUri.AbsoluteUri
+		}
+	}
+	else {
+		# Not a URI → strip provider prefix if present
+		$prefix = 'Microsoft.PowerShell.Core\FileSystem::'
+		if ($curr.StartsWith($prefix)) {
+			$base = $curr.Substring($prefix.Length)
+		}
+		else {
+			$base = $curr
+		}
+
+		# Combine using Windows separator
+		return "{0}\{1}" -f $base, (Split-Path -Path $Path -Leaf)
+	}
 }
 
 #Assign an Alias for Deprecated function 'Exists'

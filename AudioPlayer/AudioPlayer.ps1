@@ -156,6 +156,23 @@ $Disabled = '{0} Disabled, During Current Operation'
 $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wma')
 $LvwColumnWidths = @($IconSize.SmIco,$AutoSize,$AutoSize)
 $RegKeys = [Enum]::GetNames([RegistryKey])
+$RegistryKeyKind = @{
+	Default = -1
+	AutoClose = [Microsoft.Win32.RegistryValueKind]::Binary
+	AutoPlay = [Microsoft.Win32.RegistryValueKind]::Binary
+	HelpRtbFont = [Microsoft.Win32.RegistryValueKind]::MultiString
+	HideVolumeLock = [Microsoft.Win32.RegistryValueKind]::Binary
+	LockVolume = [Microsoft.Win32.RegistryValueKind]::Binary
+	LoopPlayback = [Microsoft.Win32.RegistryValueKind]::Binary
+	MainFormSize = [Microsoft.Win32.RegistryValueKind]::MultiString
+	MainLvwColumnWidth = [Microsoft.Win32.RegistryValueKind]::MultiString
+	MainLvwFont = [Microsoft.Win32.RegistryValueKind]::MultiString
+	Minimized = [Microsoft.Win32.RegistryValueKind]::Binary
+	MiniMode = [Microsoft.Win32.RegistryValueKind]::Binary
+	Playlist = [Microsoft.Win32.RegistryValueKind]::String
+	RecurseDirectory = [Microsoft.Win32.RegistryValueKind]::Binary
+	Volume = [Microsoft.Win32.RegistryValueKind]::DWord
+}
 $HelpFont = @()
 #endregion
 
@@ -167,15 +184,17 @@ $BP = [ResolveBinaryPairs]::new()
 $ARN = [AppRegistry]::New('Blueflame Dynamics','CurrentUser',$true)
 $ARN.AppName = 'PS Audio Player'
 $ARN.LoadBaseKeys()
-$DefVal = $ARN.ApplicationKey.GetValue([AppRegistry]::DefaultValue)
+Try{$DefVal = $ARN.ApplicationKey.GetValue([AppRegistry]::DefaultValue)}
+Catch{$DefVal = $Null}
+
 if($DefVal -ne $App.Vers.Substring(9)){
 	$ARN.SetValue([AppRegistry]::DefaultValue,$App.Vers.Substring(9),[W32RegKind]::String)}
 #endregion
 
 #region Get LockSettings value from Registry
 # 3 Possible values: $Null(Non-Existent),0(Unlocked),1(Locked)
-$LockSet = $ARN.ApplicationKey.GetValue('LockSettings')
-if($Null -eq $LockSet){$LockSet = 0}
+Try{$LockSet = $ARN.ApplicationKey.GetValue('LockSettings')}
+Catch{$LockSet = 0}
 #if $LockSettings set by user set new value
 if($LockSettings.Length -gt 0){
 	$LockSet = $BP.Resolve($LockSettings)
@@ -581,11 +600,22 @@ function Save-Settings{
 }
 
 function Get-Settings{
-	$NewObj = [PSObject]::New()
-	for($C=0;$C -lt $RegKeys.Count;$C++){
-		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $RegKeys[$C]`
-			-Value ($ARN.ApplicationKey.GetValue($RegKeys[$C]))
+	$NewObj = [PSCustomObject]@{}
+
+	foreach($Key in $RegKeys){
+		Try{$Value = $ARN.ApplicationKey.GetValue($Key)}
+		Catch{
+			$Value = switch($RegistryKeyKind[$Key]){
+				([Microsoft.Win32.RegistryValueKind]::Binary)      {[byte[]]0}
+				([Microsoft.Win32.RegistryValueKind]::String)      {''}
+				([Microsoft.Win32.RegistryValueKind]::MultiString) {@()}
+				([Microsoft.Win32.RegistryValueKind]::DWord)       {0}
+			}
+		}
+
+		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $Key -Value $Value
 	}
+
 	return $NewObj
 }
 

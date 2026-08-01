@@ -266,18 +266,30 @@ function Load-Dll{
 	Add-Type -Path $DLLPath
 }
 
-
 <#
 .NOTES
 Name:	 Resolve-CurrentLocation()
 Author:  Randy Turner
-Version: 1.0
+Version: 1.1
 Date:	08/15/2010
 Revision History:
+1.1 - 07/30/2026 - Adds support for UNC, URI, & URL
 1.0 - 08/15/2010 - Initial Release
 
 .SYNOPSIS
 function used to resolve the fullpath of a .\ relative path.
+
+.DESCRIPTION
+Provider-agnostic behavior, If the provider is not FileSystem,
+the function still returns a usable string path.
+
+					----- Behavior examples -----
+Current Location					Input			Output
+----------------					-----			------
+C:\Work								.\Images		C:\Work\Images
+\\Server\Share\Docs					.\file.txt		\\Server\Share\Docs\file.txt
+file:///C:/Work						.\Images		C:\Work\Images
+https://example.com/site/docs/		.\Images		https://example.com/site/docs/Images
 
 .PARAMETER Path Alias: P
 Required, .\ relative path to resolve
@@ -287,8 +299,45 @@ PS> Resolve-CurrentLocation -P .\Images
 This example returns a Fully Qualified path to the Directory\File
 #>
 function Resolve-CurrentLocation{
-	param([Parameter(Mandatory)][Alias('P')][String]$Path)
-	return "{0}\{1}" -f (Get-Location),(Split-Path -Path $($Path) -Leaf)
+	param([Parameter(Mandatory)][Alias('P')][string]$Path)
+
+	# Get current location as string
+	$curr = (Get-Location).ToString()
+
+	# Try to interpret current location as a URI
+	$uri = $null
+	if ([System.Uri]::TryCreate($curr, [System.UriKind]::Absolute, [ref]$uri)) {
+
+		if ($uri.IsFile) {
+			# File URI → convert to Windows path
+			$base = $uri.LocalPath
+
+			# Combine using Windows separator
+			return "{0}\{1}" -f $base, (Split-Path -Path $Path -Leaf)
+		}
+		else {
+			# Non-file URI → build a new URI relative to the current one
+			$leaf = (Split-Path -Path $Path -Leaf)
+
+			# System.Uri handles slash rules automatically
+			$newUri = [System.Uri]::new($uri, $leaf)
+
+			return $newUri.AbsoluteUri
+		}
+	}
+	else {
+		# Not a URI → strip provider prefix if present
+		$prefix = 'Microsoft.PowerShell.Core\FileSystem::'
+		if ($curr.StartsWith($prefix)) {
+			$base = $curr.Substring($prefix.Length)
+		}
+		else {
+			$base = $curr
+		}
+
+		# Combine using Windows separator
+		return "{0}\{1}" -f $base, (Split-Path -Path $Path -Leaf)
+	}
 }
 
 <#
