@@ -612,7 +612,8 @@ function Get-Settings{
 				([Microsoft.Win32.RegistryValueKind]::DWord)       {0}
 			}
 		}
-
+		# Skip synthetic 'Default' key; it exists only for index alignment
+		if($Key -eq 'Default'){Continue}
 		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $Key -Value $Value
 	}
 
