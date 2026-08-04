@@ -312,9 +312,12 @@ function Set-ButtonEnabledState{
 }
 
 function Set-ListViewColumnWidths{
+	$Sigma = 0
 	for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
 	}
+	for($C=0;$C -lt $ListView1.Columns.Count - 1;$C++){$Sigma += $ListView1.Columns[$C].Width}
+	$ListView1.Columns[[LvwColumn]::File].Width = $ListView1.ClientSize.Width - ($Sigma + 4)
 }
 
 function Set-MenuItem{
@@ -495,7 +498,6 @@ else{
 		Set-FocusedListViewItem
 		Set-ButtonEnabledState -Mode PlayListLoaded}
 	else{Set-ButtonEnabledState -Mode PlayListLoading}
-	$ListView1.Columns[[LvwColumn]::File].Width -= ($ListView1.Columns[[LvwColumn]::File].Width*.03)
 	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Enable
 	}
 }
@@ -601,7 +603,6 @@ function Save-Settings{
 
 function Get-Settings{
 	$NewObj = [PSCustomObject]@{}
-
 	foreach($Key in $RegKeys){
 		Try{$Value = $ARN.ApplicationKey.GetValue($Key)}
 		Catch{
@@ -612,11 +613,10 @@ function Get-Settings{
 				([Microsoft.Win32.RegistryValueKind]::DWord)       {0}
 			}
 		}
-		# Skip synthetic 'Default' key; it exists only for index alignment
+		# Skip 'Default' key; it exists only for index alignment
 		if($Key -eq 'Default'){Continue}
 		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $Key -Value $Value
 	}
-
 	return $NewObj
 }
 
@@ -1054,6 +1054,7 @@ function Show-MainForm{
 		}
 	}
 	$ListView1.Add_ColumnClick($ColumnClick)
+	$ListView1.Add_Resize({Set-ListViewColumnWidths})
 	if($Null -ne $RegistrySettings.MainLvwColumnWidth){
 		for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 			$ListView1.Columns[$C].Width = $RegistrySettings.MainLvwColumnWidth[$C]
