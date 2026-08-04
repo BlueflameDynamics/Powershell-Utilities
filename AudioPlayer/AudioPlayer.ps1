@@ -154,7 +154,7 @@ $AutoSize = -[Windows.Forms.ColumnHeaderAutoResizeStyle]::ColumnContent #Must be
 $PlayListHeader = '*-<{0} - Playlist Header>-*' -f $App.Name
 $Disabled = '{0} Disabled, During Current Operation'
 $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wma')
-$LvwColumnWidths = @($IconSize.SmIco,$AutoSize,$AutoSize)
+$LvwColumnWidths = @(($IconSize.SmIco+2),$AutoSize,$AutoSize)
 $RegKeys = [Enum]::GetNames([RegistryKey])
 $RegistryKeyKind = @{
 	Default = -1
@@ -1102,7 +1102,7 @@ function Show-MainForm{
 	$ChkMini.Parent = $Form1
 	$ChkMini.Anchor = Get-Anchor -B -L
 	$ChkMini.Location = [Drawing.Point]::New(18,($Panel1.Bottom + 10))
-	$ChkMini.Width = 115
+	$ChkMini.Width = 130
 	$ChkMini.Text = 'Enable Mini Mode'
 	$ChkMini.Enabled = $True
 	$ChkMini.Checked = $MiniMode
