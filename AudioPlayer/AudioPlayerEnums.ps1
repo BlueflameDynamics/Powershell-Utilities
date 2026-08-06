@@ -32,6 +32,7 @@ Enum FileMenuItem{
 
 Enum OptionMenuItem{
 	PlayChecked
+    GoTop
 }
 
 Enum HelpMenuItem{

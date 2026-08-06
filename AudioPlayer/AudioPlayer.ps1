@@ -233,7 +233,7 @@ function Get-ShortcutKey{
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet(
 			'Open Playlist','New Playlist','Edit Playlist','Reload Playlist','Exit','Find','Find Next','Font Settings',
-			'Help','About','Lock Volume','Save Settings','Delete Settings','Host Information','Reset Column Width','Info','Play Checked')]
+			'Help','About','Lock Volume','Save Settings','Delete Settings','Host Information','Reset Column Width','Info','Play Checked','Go Top')]
 		[String]$Mode)
 
 	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
@@ -258,6 +258,7 @@ function Get-ShortcutKey{
 		14 {$WFK::Control -bor $WFK::R}
 		15 {$WFK::Alt -bor $WFK::I}
 		16 {$WFK::Alt -bor $WFK::C}
+		17 {$WFK::Alt -bor $WFK::T}
 		default {$WFK::None}
 	}
 }
@@ -291,10 +292,11 @@ function Set-ButtonEnabledState{
 		$Buttons[[MediaButton]::Stop].Enabled = $P2
 		0..0+3..$FileMenuItems.GetUpperBound(0)|ForEach-Object{$FileMenuItems[$_].Enabled = $P3}
 		0..0+3..5+$LvwCtxMenuItems.GetUpperBound(0)|ForEach-Object{$LvwCtxMenuItems[$_].Enabled = $P3}
+		$OptionMenuItems[[OptionMenuItem]::GoTop].Enabled = $P3
 	}
 	$PlayListLoading = {
 		0..0+3..$FileMenuItems.GetUpperBound(0)|ForEach-Object{$FileMenuItems[$_].Enabled = !$FileMenuItems[$_].Enabled}
-		0..0+3..5+$LvwCtxMenuItems.GetUpperBound(0)|ForEach-Object{$LvwCtxMenuItems[$_].Enabled = !$LvwCtxMenuItems[$_].Enabled}
+		0..0+3..5+$LvwCtxMenuItems.GetUpperBound(0)|ForEach-Object{$LvwCtxMenuItems[$_].Enabled = $P1}
 	}
 	$PauseClicked = {
 		$Buttons[[MediaButton]::Play].Enabled = $False
@@ -696,7 +698,7 @@ function Show-MainForm{
 	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 4
 	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
-	$OptionMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 1
+	$OptionMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 2
 	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$HelpMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
 	$LvwCtxMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 9
@@ -796,6 +798,12 @@ function Show-MainForm{
 	$Properties_Click = {
 		Show-PropertySheetDialog -P $ListView1.SelectedItems[0].Text
 	}
+
+	$GoTop = {
+		$ListView1.Items[0].Selected = $True
+		Set-FocusedListViewItem
+		$ListView1.Focus()
+	}
 	#endregion
 
 	#region Common Control Variables
@@ -876,6 +884,7 @@ function Show-MainForm{
 
 	Set-MenuItem (Split-EnumNames -Enum ([OptionMenuItem])) $OptionMenuItems $MainMenuItemSize 'OptionMenuItem'
 	$OptionMenuItems[[OptionMenuItem]::PlayChecked].Add_Click($PlayChecked)
+	$OptionMenuItems[[OptionMenuItem]::GoTop].Add_Click($GoTop)
 
 	Set-MenuItem (Split-EnumNames -Enum ([ToolMenuItem])) $ToolMenuItems $MainMenuItemSize 'ToolMenuItem'
 	$ToolMenuItems[[ToolMenuItem]::ResetColumnWidth].Add_Click({Set-ListViewColumnWidths})
