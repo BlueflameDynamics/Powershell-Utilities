@@ -800,7 +800,6 @@ function Show-MainForm{
 	}
 
 	$GoTop = {
-		$ListView1.Items[0].Selected = $True
 		Set-FocusedListViewItem
 		$ListView1.Focus()
 	}
