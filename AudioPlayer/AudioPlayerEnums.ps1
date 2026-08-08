@@ -1,5 +1,6 @@
 $MyEnums = @(
 [CheckboxID],
+[ExportMenuItem],
 [FileMenuItem],
 [HelpMenuItem],
 [ImageListID],
@@ -35,6 +36,13 @@ Enum OptionMenuItem{
     GoTop
 }
 
+Enum ExportMenuItem{
+	ExportChecked
+	ExportCheckedClear
+	ExportOverwrite
+	ToggleCheckmarks
+}
+
 Enum HelpMenuItem{
 	Help
 	About
@@ -67,6 +75,7 @@ Enum LvwCtxItem{
 Enum MainMenuItem{
 	File
 	Options
+	Export
 	Tools
 	Help
 }
@@ -83,7 +92,6 @@ Enum MediaIcon{
 }
 
 Enum ToolMenuItem{
-	ResetColumnWidth
 	FontSettings
 	LockVolume
 	SaveSettings

@@ -2,11 +2,12 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 2.2 - 2026/07/26
+Version: 2.3 - 2026/08/07
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
 Revision History:
+V2.3 - 2026/08/07 - Added Export functions
 V2.2 - 2026/07/26 - Added Checked item support.
 V2.1 - 2026/02/25 - Added After Selection AutoClose option.
 V2.0 - 2026/02/05 - Changed Registry Library
@@ -146,7 +147,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.2 - 2026/07/26'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.3 - 2026/08/07'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -232,14 +233,15 @@ function Get-ShortcutKey{
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[ValidateSet(
-			'Open Playlist','New Playlist','Edit Playlist','Reload Playlist','Exit','Find','Find Next','Font Settings',
-			'Help','About','Lock Volume','Save Settings','Delete Settings','Host Information','Reset Column Width','Info','Play Checked','Go Top')]
+			'Open Playlist','New Playlist','Edit Playlist','Reload Playlist','Exit','Find','Find Next',
+			'Font Settings','Help','About','Lock Volume','Save Settings','Delete Settings','Host Information',
+			'Reset Column Width','Info','Play Checked','Go Top','Export Checked','Export Checked Clear','Export Overwrite','Toggle Checkmarks')]
 		[String]$Mode)
 
 	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
 	$Modes = $MyParam['Mode'].Attributes.ValidValues
 	$WFK = [Windows.Forms.Keys]
-
+	
 	switch([Array]::IndexOf($Modes,$Mode)){
 		 0 {$WFK::Alt -bor $WFK::O}
 		 1 {$WFK::Alt -bor $WFK::N}
@@ -259,6 +261,8 @@ function Get-ShortcutKey{
 		15 {$WFK::Alt -bor $WFK::I}
 		16 {$WFK::Alt -bor $WFK::C}
 		17 {$WFK::Alt -bor $WFK::T}
+		18 {$WFK::Alt -bor $WFK::X}
+		19 {$WFK::Control -bor $WFK::Shift -bor $WFK::T}
 		default {$WFK::None}
 	}
 }
@@ -656,6 +660,59 @@ function Build-FontObject{
 	if($Font[2] -eq 'Bold, Italic'){$Font[2] = 'BoldItalic'}
 	[PSCustomObject][Ordered]@{Name = $Font[0];Size = $Font[1];Style = $Font[2]}
 }
+
+function Export-CheckedItems{
+	param(
+		[Parameter()][String]$AplOut = '',
+		[Parameter()][Switch]$ClearAfterExport,
+		[Parameter()][Switch]$Overwrite
+	)
+
+	# Require at least 1 checked items to form a playlist
+	if ($ListView1.CheckedItems.Count -lt 1) {return}
+
+	# Build default output filename if none supplied
+	if ($AplOut -eq ''){
+		$AplFi = [IO.FileInfo]::New($PlayList)
+		$Base = '{0}_Export' -f $AplFi.BaseName
+		$AplOut = '{0}.apl' -f $Base
+
+		# If overwrite not requested, auto-version until unique
+		if (-not $Overwrite){
+			$Version = 1
+			while ([IO.File]::Exists($AplOut)){
+				$AplOut = '{0}_v{1}.apl' -f $Base, $Version
+				$Version++
+			}
+		}
+	}
+
+	# Build playlist output array
+	$ArrOut = @($PlayListHeader)
+	$ArrOut += $ListView1.CheckedItems | ForEach-Object {$_.Text}
+
+	# Write playlist file (overwrite allowed)
+	Set-Content -Path $AplOut -Value $ArrOut -Encoding Default
+
+	#Display Confirmation
+	Show-MessageBoxEx -Owner $Form1 -Messsage $AplOut -Title 'Export Complete' -Buttons OK -Icon Information
+
+	# Optional: clear checkmarks after export
+	if($ClearAfterExport){Set-CheckedItems}
+}
+
+function Set-CheckedItems{
+	param(
+		[Parameter()][Switch]$CheckedState
+	)
+	$Target = if($CheckedState.IsPresent){$ListView1.Items}Else{$ListView1.CheckedItems}
+	if($ListView1.CheckBoxes){
+		foreach ($Item in $Target){
+			$Item.Checked = $CheckedState.IsPresent
+		}
+	}
+}
+
 #endregion Utility functions
 
 #region Add Custom DLL
@@ -696,10 +753,11 @@ function Show-MainForm{
 	$InitialFormWindowState = [Windows.Forms.FormWindowState]::Normal
 	# Control Arrays
 	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 4
-	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
+	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
 	$OptionMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 2
-	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
+	$ExportMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
+	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
 	$HelpMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
 	$LvwCtxMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 9
 	$LvwCtxMenuBars = New-ObjectArray -TypeName Windows.Forms.ToolStripSeparator -Count 4
@@ -803,6 +861,8 @@ function Show-MainForm{
 		Set-FocusedListViewItem
 		$ListView1.Focus()
 	}
+
+	$ToggleChecked = {Set-CheckedItems -CheckedState:($ListView1.CheckedItems.Count -eq 0)}
 	#endregion
 
 	#region Common Control Variables
@@ -884,9 +944,14 @@ function Show-MainForm{
 	Set-MenuItem (Split-EnumNames -Enum ([OptionMenuItem])) $OptionMenuItems $MainMenuItemSize 'OptionMenuItem'
 	$OptionMenuItems[[OptionMenuItem]::PlayChecked].Add_Click($PlayChecked)
 	$OptionMenuItems[[OptionMenuItem]::GoTop].Add_Click($GoTop)
+	
+	Set-MenuItem (Split-EnumNames -Enum ([ExportMenuItem])) $ExportMenuItems $MainMenuItemSize 'ExportMenuItem'
+	$ExportMenuItems[[ExportMenuItem]::ExportChecked].Add_Click({Export-CheckedItems})
+	$ExportMenuItems[[ExportMenuItem]::ExportCheckedClear].Add_Click({Export-CheckedItems -ClearAfterExport})
+	$ExportMenuItems[[ExportMenuItem]::ExportOverwrite].Add_Click({Export-CheckedItems -Overwrite})
+	$ExportMenuItems[[ExportMenuItem]::ToggleCheckmarks].Add_Click($ToggleChecked)
 
 	Set-MenuItem (Split-EnumNames -Enum ([ToolMenuItem])) $ToolMenuItems $MainMenuItemSize 'ToolMenuItem'
-	$ToolMenuItems[[ToolMenuItem]::ResetColumnWidth].Add_Click({Set-ListViewColumnWidths})
 	$ToolMenuItems[[ToolMenuItem]::FontSettings].Add_Click($FontSettings_Click)
 	$ToolMenuItems[[ToolMenuItem]::LockVolume].Add_Click($LockVolume_Click)
 	$ToolMenuItems[[ToolMenuItem]::SaveSettings].Add_Click({Save-Settings})
@@ -902,6 +967,7 @@ function Show-MainForm{
 	Set-MenuItem (Split-EnumNames -Enum ([MainMenuItem])) $MainMenuItems $MainMenuItemSize 'MainMenuItem' -SetSizeOff -NoHotKeys
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.AddRange($FileMenuItems)
 	$MainMenuItems[[MainMenuItem]::Options].DropDownItems.AddRange($OptionMenuItems)
+	$MainMenuItems[[MainMenuItem]::Export].DropDownItems.AddRange($ExportMenuItems)
 	$MainMenuItems[[MainMenuItem]::Tools].DropDownItems.AddRange($ToolMenuItems)
 	$MainMenuItems[[MainMenuItem]::Help].DropDownItems.AddRange($HelpMenuItems)
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Exit,$FileMenuBar[1])
