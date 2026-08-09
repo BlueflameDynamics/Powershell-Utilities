@@ -260,7 +260,7 @@ This example displays a MessageBox returns the selected button
 function Show-MessageBoxEx{
 	param(
 	[Parameter()][Alias('O')][System.Windows.Forms.Form]$Owner = $Null,
-	[Parameter(Mandatory)][Alias('M')][String]$Messsage,
+	[Parameter(Mandatory)][Alias('M')][String]$Message,
 	[Parameter()][Alias('T')][String]$Title = '',
 	[Parameter()][Alias('B')]
 		[System.Windows.Forms.MessageBoxButtons]$Buttons = [System.Windows.Forms.MessageBoxButtons]::OK,
@@ -303,19 +303,19 @@ Set-Alias -Name Show-MessageBox -Value Show-MessageBoxEx
 .NOTES
 Name:		Show-HelpForm Function
 Author:		Randy Turner
-Version:	1.3
-Date:		06/01/2022
+Version:	1.4 - 11/26/2025
 Revision History:
-	V1.0 - 06/05/2014 - Original Release
-	V1.1 - 12/04/2019 - Enhanched Text-to-Speech
-	V1.2 - 12/11/2019 - Converted Text-to-Speech to Async & added an escape
+    V1.4 - 11/26/2025 - Enhanced Text-to-Speech Performance.
 	V1.3 - 06/01/2022 - Added gender support to Text-to-Speech
+	V1.2 - 12/11/2019 - Converted Text-to-Speech to Async & added an escape
+	V1.1 - 12/04/2019 - Enhanced Text-to-Speech
+	V1.0 - 06/05/2014 - Original Release
 
 .SYNOPSIS
-Provides a wrapper for fumction used to Display a Help Window
+Provides a wrapper for function used to Display a Help Window
 
 .PARAMETER AppName
-Required, Application Name to be used within the AboutBox
+Required, Application Name to be used within the HelpForm
 
 .PARAMETER HelpText
 Required, Text to be used within the HelpForm's RichTextBox
@@ -333,15 +333,17 @@ Optional, Switch if present causes the URLs within the About Text to be detected
 Optional, Switch if present causes the HelpText parameter to be treated as a text filename
 The file is imported and displayed in the Help Form.
 
+.PARAMETER ReadText - Alias: Read
+Optional, Switch if present enables the 'Read Text' button.
+
 .EXAMPLE
 $Help_Click ={
 $HelpText = ("<Some Help Test>") 
 Show-HelpForm -AppName "Help Test" -DetectUrls -HelpText $HelpText
 }
-This example displays the default About
+This example displays aHelpForm.
 #>
 function Show-HelpForm{
-
 	param (
 			[Parameter(Mandatory)][String]$AppName,
 			[Parameter(Mandatory)][String]$HelpText,
@@ -352,6 +354,28 @@ function Show-HelpForm{
 			[Parameter()][Alias('Read')][Switch]$ReadText)
 
 	Add-Type -A System.Windows.Forms
+	Add-Type -A System.Speech
+
+	# Enums
+	Enum BtnID{Stop; Read; Exit}
+
+	#Form and Controls 
+	$FrmHelp = [Windows.Forms.Form]::New()
+	$RtbHelp = [Windows.Forms.RichTextBox]::New()
+	$Buttons = New-ObjectArray -TypeName System.Windows.Forms.Button -Count 3
+	$BTT = @('&Stop','&Read Text','E&xit')
+
+	# Create synthesizer once
+	$SayIt = New-Object System.Speech.Synthesis.SpeechSynthesizer
+
+	# Configure SpeakCompleted event
+	$SayIt.add_SpeakCompleted({
+		$RtbHelp.Cursor = [Windows.Forms.Cursors]::Default
+		$Buttons[[BtnID]::Read].Enabled = $true
+		$Buttons[[BtnID]::Exit].Enabled = $true
+		$Buttons[[BtnID]::Read].Visible = $true
+		$Buttons[[BtnID]::Stop].Visible = $false
+	})
 
 	#region Utility Functions
 	function Get-ShortcutKey{
@@ -394,8 +418,6 @@ function Show-HelpForm{
 	#endregion
 	
 	#region Add objects for Help
-	$FrmHelp = [Windows.Forms.Form]::New()
-	$RtbHelp = [Windows.Forms.RichTextBox]::New()
 	$InitialFormWindowState = [System.Windows.Forms.FormWindowState]::Normal
 	$Help_MainMenu = [Windows.Forms.MenuStrip]::New()
 	$Help_MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 1
@@ -413,12 +435,21 @@ function Show-HelpForm{
 	$FrmHelp.AutoSizeMode = [System.Windows.Forms.AutoSizeMode]::GrowOnly
 	$FrmHelp.Name = 'FrmHelp'
 	$FrmHelp.ShowInTaskbar = $False
-	$FrmHelp.Text = -join $AppName,' - Help'
+	$FrmHelp.Text =  '{1} - Help{0}' -f ("`n"*2), $AppName
 	$FrmHelp.FormBorderStyle = [Windows.Forms.FormBorderStyle]::Sizable
 	$FrmHelp.StartPosition = [Windows.Forms.FormStartPosition]::CenterParent
 	$FrmHelp.Icon = [BlueflameDynamics.IconTools]::ExtractIcon($ImageRes, 94, 16)
 	$FrmHelp.MaximizeBox = $False
 	$FrmHelp.Controls.Add($Help_MainMenu)
+	# Attach FormClosing event handler
+	$FrmHelp.Add_FormClosing({
+		param($sender, $e)
+		if ($SayIt.State -eq [System.Speech.Synthesis.SynthesizerState]::Speaking) {
+			$Msg = @('Speech is still in progress. Please stop playback before closing.','Cannot Close')
+			Show-MessageBox -O $FrmHelp -M $Msg[0] -T $Msg[1] -B OK -I Warning
+			$e.Cancel = $true
+		}
+	})
 	#endregion
 
 	#region Main Menu
@@ -460,12 +491,10 @@ function Show-HelpForm{
 				-T 'Help File Not Found!' -B Ok -I Warning
 		return $Null
 		}
-	$Lines = Get-Content -Path $Helptext
-	$HelpText = ''
-	foreach($Line in $Lines){$HelpText+="{0}`r`n" -f $Line}
+	$HelpText = Get-Content -Path $HelpText -Raw
 	}
 
-	$RtbHelp.Text = -join $AppName,' - Help',$HelpText
+	$RtbHelp.Text = "{1} - Help{0}{2}" -f ("`n"*2), $AppName, $HelpText
 
 	#Handles clicking of links in help document
 	$RtbHelp.Add_LinkClicked({Invoke-Expression -Command "Start $($_.LinkText)"})
@@ -474,60 +503,49 @@ function Show-HelpForm{
 
 	#region Buttons
 	$BtnWidth = 80
-	$BTT = @('&Stop','&Read Text','E&xit')
-	$Buttons = New-ObjectArray -TypeName System.Windows.Forms.Button -Count 3
-	$BC = $Buttons.Count
-	for($C=0;$C -lt $Buttons.Count;$C++){
-		$Buttons[$C].Anchor = Get-Anchor -B -R
-		$Buttons[$C].Name = 'Btn'+$BTT[$C]
-		$Buttons[$C].Size = [System.Drawing.Size]::New($BtnWidth,30)
-		$Buttons[$C].Left = $RtbHelp.Right - ($BtnWidth*$BC)
-		$Buttons[$C].Location = [System.Drawing.Point]::New($Buttons[$C].Left,$FrmHelp.Height*.86)
-		$Buttons[$C].Text = $BTT[$C]
-		$Buttons[$C].Enabled = `
-		$Buttons[$C].Visible = $True
-		$Buttons[$C].UseVisualStyleBackColor = $True
-		$FrmHelp.Controls.Add($Buttons[$C])
-		$BC--
+	$Count = $Buttons.Count
+	$Index = 0
+	ForEach($btn in $Buttons){
+		$btn.Anchor = Get-Anchor -B -R
+		$btn.Size   = [System.Drawing.Size]::New($BtnWidth,30)
+
+		# Right-to-left placement
+		$btn.Left = $RtbHelp.Right - ($BtnWidth * ($Count - $Index))
+		$btn.Location = [System.Drawing.Point]::New($btn.Left, $FrmHelp.Height * .86)
+
+		$btn.UseVisualStyleBackColor = $true
+		$btn.Name = 'Btn' + $BTT[$Index]
+		$btn.Text = $BTT[$Index]
+
+		$FrmHelp.Controls.Add($btn)
+		$Index++
 	}
-	$Buttons[0].Enabled = `
-	$Buttons[0].Visible = $False
-	$Buttons[0].Location = $Buttons[1].Location
-	if(!$ReadText.IsPresent){
-		$Buttons[1].Enabled = `
-		$Buttons[1].Visible = $False
-	}
-	$BtnRead_Click = {
-		$RtbHelp.Cursor = Get-Cursor -Mode WaitCursor
-		Add-Type -A System.Speech
-		$SayIt = New-Object -TypeName System.Speech.Synthesis.SpeechSynthesizer
-		$Voice = if($Help_ToolMenuItems[1].Checked){'Male'}else{'Female'}
-		$SayIt.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::$Voice)
+
+	# Stop button
+	$Buttons[[BtnID]::Stop].Visible = $false
+	$Buttons[[BtnID]::Stop].Location = $Buttons[[BtnID]::Read].Location # Intentionally Overlay Read/Stop Buttons
+	$Buttons[[BtnID]::Stop].Add_Click({ $SayIt.SpeakAsyncCancelAll() })
+
+	# Read button
+	$Buttons[[BtnID]::Read].Add_Click({
+		$RtbHelp.Cursor = [Windows.Forms.Cursors]::WaitCursor
+		$Voice = if ($Help_ToolMenuItems[1].Checked) { 'Male' } else { 'Female' }
+		$SayIt.SelectVoiceByHints(
+			[System.Speech.Synthesis.VoiceGender]::$Voice,
+			[System.Speech.Synthesis.VoiceAge]::Adult)
 		$SayIt.SpeakAsync($RtbHelp.Text)
-		$Buttons[1].Enabled = `
-		$Buttons[2].Enabled = `
-		$Buttons[1].Visible = $False
-		$Buttons[0].Enabled = `
-		$Buttons[0].Visible = $True
-		$I = 0
-		Do{<#Wait While Speaking Loop#>
-			If($I % (1000*5) -eq 0){
-				[System.Windows.Forms.Application]::DoEvents()
-				$I = 0}
-			$I++
-		}
-		While($SayIt.State -eq [System.Speech.Synthesis.SynthesizerState]::Speaking)
-		$RtbHelp.Cursor = Get-Cursor -Mode Default
-		$Buttons[1].Enabled = `
-		$Buttons[2].Enabled = `
-		$Buttons[1].Visible = $True
-		$Buttons[0].Visible = $False
-	}
-	$BtnExit_Click = {$FrmHelp.Close()}
-	$BtnStop_Click = {$SayIt.SpeakAsyncCancelAll()}
-	$Buttons[0].Add_Click($BtnStop_Click)
-	$Buttons[1].Add_Click($BtnRead_Click)
-	$Buttons[2].Add_Click($BtnExit_Click)
+
+		$Buttons[[BtnID]::Read].Enabled = $false
+		$Buttons[[BtnID]::Exit].Enabled = $false
+		$Buttons[[BtnID]::Read].Visible = $false
+		$Buttons[[BtnID]::Stop].Visible = $true
+	})
+	# Enforce $ReadText Switch
+    $Buttons[[BtnID]::Read].Enabled = $ReadText
+    $Buttons[[BtnID]::Read].Visible = $ReadText
+    
+	# Exit button
+	$Buttons[[BtnID]::Exit].Add_Click({ $FrmHelp.Close() })
 	#endregion
 
 	[Void]$FrmHelp.ShowDialog()
@@ -659,20 +677,16 @@ Date:		06/05/2014
 .SYNOPSIS
 Provides a wrapper for fumction used to get a WinForm Anchor value.
 
-.PARAMETER Top
-Alias: T
+.PARAMETER Top - Alias: T
 Optional, causes the TOP Anchor to be included.
 
-.PARAMETER Bottom
-Alias: B
+.PARAMETER Bottom - Alias: B
 Optional, causes the BOTTOM Anchor to be included.
 
-.PARAMETER Left
-Alias: L
+.PARAMETER Left - Alias: L
 Optional, causes the LEFT Anchor to be included.
 
-.PARAMETER Right
-Alias: R
+.PARAMETER Right - Alias: R
 Optional, causes the RIGHT Anchor to be included.
 
 .EXAMPLE
