@@ -159,20 +159,20 @@ $LvwColumnWidths = @(($IconSize.SmIco+2),$AutoSize,$AutoSize)
 $RegKeys = [Enum]::GetNames([RegistryKey])
 $RegistryKeyKind = @{
 	Default = -1
-	AutoClose = [Microsoft.Win32.RegistryValueKind]::Binary
-	AutoPlay = [Microsoft.Win32.RegistryValueKind]::Binary
-	HelpRtbFont = [Microsoft.Win32.RegistryValueKind]::MultiString
-	HideVolumeLock = [Microsoft.Win32.RegistryValueKind]::Binary
-	LockVolume = [Microsoft.Win32.RegistryValueKind]::Binary
-	LoopPlayback = [Microsoft.Win32.RegistryValueKind]::Binary
-	MainFormSize = [Microsoft.Win32.RegistryValueKind]::MultiString
-	MainLvwColumnWidth = [Microsoft.Win32.RegistryValueKind]::MultiString
-	MainLvwFont = [Microsoft.Win32.RegistryValueKind]::MultiString
-	Minimized = [Microsoft.Win32.RegistryValueKind]::Binary
-	MiniMode = [Microsoft.Win32.RegistryValueKind]::Binary
-	Playlist = [Microsoft.Win32.RegistryValueKind]::String
-	RecurseDirectory = [Microsoft.Win32.RegistryValueKind]::Binary
-	Volume = [Microsoft.Win32.RegistryValueKind]::DWord
+	AutoClose = [W32RegKind]::Binary
+	AutoPlay = [W32RegKind]::Binary
+	HelpRtbFont = [W32RegKind]::MultiString
+	HideVolumeLock = [W32RegKind]::Binary
+	LockVolume = [W32RegKind]::Binary
+	LoopPlayback = [W32RegKind]::Binary
+	MainFormSize = [W32RegKind]::MultiString
+	MainLvwColumnWidth = [W32RegKind]::MultiString
+	MainLvwFont = [W32RegKind]::MultiString
+	Minimized = [W32RegKind]::Binary
+	MiniMode = [W32RegKind]::Binary
+	Playlist = [W32RegKind]::String
+	RecurseDirectory = [W32RegKind]::Binary
+	Volume = [W32RegKind]::DWord
 }
 $HelpFont = @()
 #endregion
@@ -262,7 +262,7 @@ function Get-ShortcutKey{
 		16 {$WFK::Alt -bor $WFK::C}
 		17 {$WFK::Alt -bor $WFK::T}
 		18 {$WFK::Alt -bor $WFK::X}
-		19 {$WFK::Control -bor $WFK::Shift -bor $WFK::T}
+		21 {$WFK::Control -bor $WFK::Shift -bor $WFK::T}
 		default {$WFK::None}
 	}
 }
@@ -613,10 +613,10 @@ function Get-Settings{
 		Try{$Value = $ARN.ApplicationKey.GetValue($Key)}
 		Catch{
 			$Value = switch($RegistryKeyKind[$Key]){
-				([Microsoft.Win32.RegistryValueKind]::Binary)      {[byte[]]0}
-				([Microsoft.Win32.RegistryValueKind]::String)      {''}
-				([Microsoft.Win32.RegistryValueKind]::MultiString) {@()}
-				([Microsoft.Win32.RegistryValueKind]::DWord)       {0}
+				([W32RegKind]::Binary)      {[byte[]]0}
+				([W32RegKind]::String)      {''}
+				([W32RegKind]::MultiString) {@()}
+				([W32RegKind]::DWord)       {0}
 			}
 		}
 		# Skip 'Default' key; it exists only for index alignment
@@ -674,14 +674,14 @@ function Export-CheckedItems{
 	# Build default output filename if none supplied
 	if ($AplOut -eq ''){
 		$AplFi = [IO.FileInfo]::New($PlayList)
-		$Base = '{0}_Export' -f $AplFi.BaseName
-		$AplOut = '{0}.apl' -f $Base
+		$Base = '{0}_Export' -f [IO.Path]::GetFileNameWithoutExtension($AplFi.Name)
+		$AplOut = '{0}\{1}.apl' -f $AplFi.DirectoryName, $Base
 
 		# If overwrite not requested, auto-version until unique
 		if (-not $Overwrite){
 			$Version = 1
 			while ([IO.File]::Exists($AplOut)){
-				$AplOut = '{0}_v{1}.apl' -f $Base, $Version
+				$AplOut = '{0}\{1}_v{2}.apl' -f $AplFi.DirectoryName, $Base, $Version
 				$Version++
 			}
 		}
@@ -695,7 +695,7 @@ function Export-CheckedItems{
 	Set-Content -Path $AplOut -Value $ArrOut -Encoding Default
 
 	#Display Confirmation
-	Show-MessageBoxEx -Owner $Form1 -Messsage $AplOut -Title 'Export Complete' -Buttons OK -Icon Information
+	Show-MessageBoxEx -O $Form1 -M $AplOut -T 'Export Complete' -B OK -I Information
 
 	# Optional: clear checkmarks after export
 	if($ClearAfterExport){Set-CheckedItems}
@@ -918,10 +918,7 @@ function Show-MainForm{
 	#endregion 
 
 	#region MainMenu 
-	<#
-	MainMenu is a Drop-Down menu designed to provide access to the
-	various functions.
-	#>
+	<#MainMenu is a Drop-Down menu designed to provide access to the various functions.#>
 	$MainMenu.Name = 'MainMenu'
 	$MainMenu.Size = [Drawing.Size]::New(220,30)
 	$MainMenu.Items.AddRange($MainMenuItems)
@@ -962,7 +959,7 @@ function Show-MainForm{
 	Set-MenuItem (Split-EnumNames -Enum ([HelpMenuItem])) $HelpMenuItems $MainMenuItemSize 'HelpMenuItem'
 	$HelpMenuItems[[HelpMenuItem]::Help].Add_Click($Help_Click)
 	$HelpMenuItems[[HelpMenuItem]::About].Add_Click($About_Click)
-	$HelpMenuItems[([HelpMenuItem]::HostInformation)].Add_Click($Host_Click)
+	$HelpMenuItems[[HelpMenuItem]::HostInformation].Add_Click($Host_Click)
 
 	Set-MenuItem (Split-EnumNames -Enum ([MainMenuItem])) $MainMenuItems $MainMenuItemSize 'MainMenuItem' -SetSizeOff -NoHotKeys
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.AddRange($FileMenuItems)
@@ -1224,6 +1221,10 @@ function Show-MainForm{
 		$BC--
 	}
 	$BtnPlay_Click = {
+		if ($ListView1.CheckedItems.Count -eq 0) {
+	Show-MessageBoxEx -O $Form1 -M 'No checked items to play.' -T 'Playlist Selection Error!' -B OK -I Warning
+	return
+}
 		Set-ButtonEnabledState -Mode PlayClicked
 		Invoke-Playlist}
 	$BtnStop_Click = {
