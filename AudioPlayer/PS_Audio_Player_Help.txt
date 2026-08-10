@@ -1,5 +1,4 @@
  
-
 INTRODUCTION:
 
 PS Audio Player was designed as a specialized audio player.  Supported audio file types are:

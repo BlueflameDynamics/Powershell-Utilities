@@ -669,19 +669,19 @@ function Export-CheckedItems{
 	)
 
 	# Require at least 1 checked items to form a playlist
-	if ($ListView1.CheckedItems.Count -lt 1) {return}
+	if($ListView1.CheckedItems.Count -lt 1){return}
 
 	# Build default output filename if none supplied
-	if ($AplOut -eq ''){
+	if($AplOut -eq ''){
 		$AplFi = [IO.FileInfo]::New($PlayList)
 		$Base = '{0}_Export' -f [IO.Path]::GetFileNameWithoutExtension($AplFi.Name)
-		$AplOut = '{0}\{1}.apl' -f $AplFi.DirectoryName, $Base
+		$AplOut = '{0}\{1}.apl' -f $AplFi.DirectoryName,$Base
 
 		# If overwrite not requested, auto-version until unique
-		if (-not $Overwrite){
+		if(-not $Overwrite){
 			$Version = 1
 			while ([IO.File]::Exists($AplOut)){
-				$AplOut = '{0}\{1}_v{2}.apl' -f $AplFi.DirectoryName, $Base, $Version
+				$AplOut = '{0}\{1}_v{2}.apl' -f $AplFi.DirectoryName,$Base,$Version
 				$Version++
 			}
 		}
@@ -702,9 +702,7 @@ function Export-CheckedItems{
 }
 
 function Set-CheckedItems{
-	param(
-		[Parameter()][Switch]$CheckedState
-	)
+	param([Parameter()][Switch]$CheckedState)
 	$Target = if($CheckedState.IsPresent){$ListView1.Items}Else{$ListView1.CheckedItems}
 	if($ListView1.CheckBoxes){
 		foreach ($Item in $Target){
@@ -1221,10 +1219,10 @@ function Show-MainForm{
 		$BC--
 	}
 	$BtnPlay_Click = {
-		if ($ListView1.CheckedItems.Count -eq 0) {
-	Show-MessageBoxEx -O $Form1 -M 'No checked items to play.' -T 'Playlist Selection Error!' -B OK -I Warning
-	return
-}
+		if($ListView1.CheckedItems.Count -eq 0){
+	        Show-MessageBoxEx -O $Form1 -M 'No checked items to play.' -T 'Playlist Selection Error!' -B OK -I Warning
+	        return
+		}
 		Set-ButtonEnabledState -Mode PlayClicked
 		Invoke-Playlist}
 	$BtnStop_Click = {
