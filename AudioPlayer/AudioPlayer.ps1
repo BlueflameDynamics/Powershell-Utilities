@@ -843,7 +843,11 @@ function Show-MainForm{
 
 	$Host_Click = {Show-HostInfo}
 
-	$PlayChecked = {$this.Checked = !$this.Checked;	$ListView1.CheckBoxes = $this.Checked}
+	$PlayChecked = {
+		$this.Checked = !$this.Checked
+		$ListView1.CheckBoxes = $this.Checked
+		$MainMenu.Items[[MainMenuItem]::Export].Enabled = $this.Checked
+		}
 
 	$Form_BringToTop = {
 		$This.TopMost = $True
@@ -968,6 +972,7 @@ function Show-MainForm{
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Exit,$FileMenuBar[1])
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Find,$FileMenuBar[0])
 	$Form1.Controls.Add($MainMenu)
+	$MainMenu.Items[[MainMenuItem]::Export].Enabled = $False
 	#endregion MainMenu
 
 	#region Labels
@@ -1219,7 +1224,7 @@ function Show-MainForm{
 		$BC--
 	}
 	$BtnPlay_Click = {
-		if($ListView1.CheckedItems.Count -eq 0){
+		if($OptionMenuItems[[OptionMenuItem]::PlayChecked].Checked -and $ListView1.CheckedItems.Count -eq 0){
 	        Show-MessageBoxEx -O $Form1 -M 'No checked items to play.' -T 'Playlist Selection Error!' -B OK -I Warning
 	        return
 		}
