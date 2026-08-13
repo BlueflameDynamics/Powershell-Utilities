@@ -24,7 +24,7 @@ The key feature which distinguishes PS Audio Player from others is how a playlis
 
 The Playlist:
 
-The playlist is a plain text file consisting of a required playlist header as the first line of the file. The playlist header, (-<PS Audio Player - Playlist Header>-), begins and ends with an asterisk.
+The playlist is a plain text file consisting of a required playlist header as the first line of the file. The playlist header, (*-<PS Audio Player - Playlist Header>-*), begins and ends with an asterisk.
 
 Successive lines in the playlist may contain a fully qualified filename or a fully qualified directory path. Blank lines and those with an asterisk as the first character will be treated as comments. URLs to Local Network resources are supported. Files of unsupported types will be ignored. Directories will be searched for all supported files and include these files. By default, directories are not searched recursively. However, you may opt to search directories recursively before loading a playlist. The dynamic playlist is sorted by the full path filenames before loading.
 
