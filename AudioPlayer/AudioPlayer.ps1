@@ -888,9 +888,9 @@ function Show-MainForm{
 		[Array]::IndexOf($IconCatalog[[IconCatalogGroup]::Tag],'App Icon'),
 		$IconSize.Form)
 	$Form1.Size = [Drawing.Size]::New(800,510)
-	$FormSize.Mini = [Drawing.Size]::New(($Form1.Size.Width*0.92),($Form1.Size.Height*0.4588))
+	$FormSize.Mini = [Drawing.Size]::New(736,234)
  	$FormSize.Min = `
-	$Form1.MinimumSize = [Drawing.Size]::New(710,410)
+	$Form1.MinimumSize = [Drawing.Size]::New(736,410)
 	$Form1.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
 	if($Minimized.IsPresent){$Form1.WindowState = [Windows.Forms.FormWindowState]::Minimized}
 	if($RegistrySettings.MainFormSize.Width -gt 0){
