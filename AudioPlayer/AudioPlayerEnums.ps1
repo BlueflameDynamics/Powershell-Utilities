@@ -41,6 +41,7 @@ Enum ExportMenuItem{
 	ExportCheckedClear
 	ExportOverwrite
 	ToggleCheckmarks
+    ShowCheckedDuration
 }
 
 Enum HelpMenuItem{

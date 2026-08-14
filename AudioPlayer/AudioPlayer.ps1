@@ -151,6 +151,7 @@ $App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.3 - 20
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
+$StoredLvwWidth = 0
 $AutoSize = -[Windows.Forms.ColumnHeaderAutoResizeStyle]::ColumnContent #Must be Negative
 $PlayListHeader = '*-<{0} - Playlist Header>-*' -f $App.Name
 $Disabled = '{0} Disabled, During Current Operation'
@@ -235,7 +236,8 @@ function Get-ShortcutKey{
 		[ValidateSet(
 			'Open Playlist','New Playlist','Edit Playlist','Reload Playlist','Exit','Find','Find Next',
 			'Font Settings','Help','About','Lock Volume','Save Settings','Delete Settings','Host Information',
-			'Reset Column Width','Info','Play Checked','Go Top','Export Checked','Export Checked Clear','Export Overwrite','Toggle Checkmarks')]
+			'Reset Column Width','Info','Play Checked','Go Top','Export Checked','Export Checked Clear',
+			'Export Overwrite','Toggle Checkmarks','Show Checked Duration')]
 		[String]$Mode)
 
 	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
@@ -318,6 +320,7 @@ function Set-ButtonEnabledState{
 }
 
 function Set-ListViewColumnWidths{
+	if($LvwResizeOverride){return}
 	$Sigma = 0
 	for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
@@ -359,6 +362,17 @@ function Get-MediaDuration([String]$Path){
 	return $DurationMask -f [TimeSpan]::FromTicks([Long]$t) #Media File Duration String
 }
 
+function Format-TotalDuration{
+    param([Parameter(Mandatory)][TimeSpan]$TS)
+    $Mask = if ($TS.Days -gt 0) {
+        'dd\:hh\:mm\:ss\.fff'
+    } else {
+        'hh\:mm\:ss\.fff'
+    }
+
+    return $TS.ToString($Mask)
+}
+
 function Add-ListViewItem{
 	param(
 		[Parameter(Mandatory)][Alias('Lvw')][Windows.Forms.ListView]$Control,
@@ -372,7 +386,7 @@ function Add-ListViewItem{
 	[Void]$LvwItem.SubItems.Add([IO.Path]::GetFileName($MainValue)) 
 	[Void]$Control.Items.Add($LvwItem)
 	$LblStatus.Text = 'Opening Playlist (File: {0}), Please Wait ...' -f $Control.Items.Count
-	$LblTotalRuntime.Text = 'Playlist Duration: [{0:dd\:hh\:mm\:ss\.fff}] - Files: {1}' -f $Script:PlayListDuration,$Control.Items.Count
+	$LblTotalRuntime.Text = $('Playlist Duration: [{0}] - Files: {1}') -f (Format-TotalDuration $Script:PlayListDuration),$Control.Items.Count
 	[Windows.Forms.Application]::DoEvents()
 }
 
@@ -754,7 +768,7 @@ function Show-MainForm{
 	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
 	$OptionMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 2
-	$ExportMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
+	$ExportMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$ToolMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 4
 	$HelpMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 3
 	$LvwCtxMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 9
@@ -830,18 +844,38 @@ function Show-MainForm{
 	}
 
 	$ChkMini_Changed = {
-		$MiniMode = !$MiniMode
-		if($ChkMini.Checked){
-			$FormSize.Base = $Form1.Size
-			$Form1.Size = $Form1.MinimumSize = $FormSize.Mini}
-		else{
-			$Form1.MinimumSize = $FormSize.Min
-			$Form1.Size = $FormSize.Base}
-		$PicIcon.Visible = !$ChkMini.Checked
-		RepositionTo-CenterScreen -Form $Form1
+	# Hide ListView to suppress resize events
+	$ListView1.Visible = $False
+	if ($ChkMini.Checked) {
+		# Enter MiniMode
+		$FormSize.Base = $Form1.Size
+		$Form1.Size = $Form1.MinimumSize = $FormSize.Mini
+		$PicIcon.Visible = $False
 	}
+	else {
+		# Exit MiniMode
+		$Form1.MinimumSize = $FormSize.Min
+		$Form1.Size = $FormSize.Base
+		$PicIcon.Visible = $True
+	}
+	RepositionTo-CenterScreen -Form $Form1
+	# Unhide ListView AFTER layout stabilizes
+	$ListView1.Visible = $True
+	# Now safely resize columns once
+	Set-ListViewColumnWidths
+}
 
 	$Host_Click = {Show-HostInfo}
+
+	$ShowCheckedDuration = {
+	$Total = [TimeSpan]0
+	foreach ($Item in $ListView1.CheckedItems){
+		$TS = [TimeSpan]::Parse($Item.SubItems[[LvwColumn]::Duration].Text)
+		$Total += $TS
+	}
+
+	Show-MessageBoxEx -O $Form1 -M ("Checked Duration:`r`n{0}" -f (Format-TotalDuration $Total)) -T 'Checked Items' -B OK -I Information
+	}
 
 	$PlayChecked = {
 		$this.Checked = !$this.Checked
@@ -890,7 +924,7 @@ function Show-MainForm{
 	$Form1.Size = [Drawing.Size]::New(800,510)
 	$FormSize.Mini = [Drawing.Size]::New(736,234)
  	$FormSize.Min = `
-	$Form1.MinimumSize = [Drawing.Size]::New(736,410)
+	$Form1.MinimumSize = [Drawing.Size]::New(736,510)
 	$Form1.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
 	if($Minimized.IsPresent){$Form1.WindowState = [Windows.Forms.FormWindowState]::Minimized}
 	if($RegistrySettings.MainFormSize.Width -gt 0){
@@ -949,6 +983,7 @@ function Show-MainForm{
 	$ExportMenuItems[[ExportMenuItem]::ExportCheckedClear].Add_Click({Export-CheckedItems -ClearAfterExport})
 	$ExportMenuItems[[ExportMenuItem]::ExportOverwrite].Add_Click({Export-CheckedItems -Overwrite})
 	$ExportMenuItems[[ExportMenuItem]::ToggleCheckmarks].Add_Click($ToggleChecked)
+	$ExportMenuItems[[ExportMenuItem]::ShowCheckedDuration].Add_Click($ShowCheckedDuration)
 
 	Set-MenuItem (Split-EnumNames -Enum ([ToolMenuItem])) $ToolMenuItems $MainMenuItemSize 'ToolMenuItem'
 	$ToolMenuItems[[ToolMenuItem]::FontSettings].Add_Click($FontSettings_Click)
