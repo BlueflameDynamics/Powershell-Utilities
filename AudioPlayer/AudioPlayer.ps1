@@ -151,12 +151,13 @@ $App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.3 - 20
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
-$StoredLvwWidth = 0
 $AutoSize = -[Windows.Forms.ColumnHeaderAutoResizeStyle]::ColumnContent #Must be Negative
 $PlayListHeader = '*-<{0} - Playlist Header>-*' -f $App.Name
 $Disabled = '{0} Disabled, During Current Operation'
 $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wma')
 $LvwColumnWidths = @(($IconSize.SmIco+2),$AutoSize,$AutoSize)
+$StoredLvwWidth = 0
+$HelpFont = @()
 $RegKeys = [Enum]::GetNames([RegistryKey])
 $RegistryKeyKind = @{
 	Default = -1
@@ -174,8 +175,7 @@ $RegistryKeyKind = @{
 	Playlist = [W32RegKind]::String
 	RecurseDirectory = [W32RegKind]::Binary
 	Volume = [W32RegKind]::DWord
-}
-$HelpFont = @()
+	}
 #endregion
 
 #region BinaryPairs
@@ -265,6 +265,7 @@ function Get-ShortcutKey{
 		17 {$WFK::Alt -bor $WFK::T}
 		18 {$WFK::Alt -bor $WFK::X}
 		21 {$WFK::Control -bor $WFK::Shift -bor $WFK::T}
+		22 {$WFK::Control -bor $WFK::Shift -bor $WFK::D}
 		default {$WFK::None}
 	}
 }
@@ -320,7 +321,6 @@ function Set-ButtonEnabledState{
 }
 
 function Set-ListViewColumnWidths{
-	if($LvwResizeOverride){return}
 	$Sigma = 0
 	for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
@@ -339,13 +339,13 @@ Param(
 	[Parameter()][Switch]$SetSizeOff,
 	[Parameter()][Switch]$NoHotKeys)
 
-for($C=0;$C -le $MenuItems.GetUpperBound(0);$C++){
-	$MenuItems[$C].Name =  $ItemPrefix + ($C+1)
-	$MenuItems[$C].Text = $Labels[$C]
-	if(!$SetSizeOff){$MenuItems[$C].Size = $ItemSize}
-	if(!$NoHotKeys){
-		$MenuItems[$C].ShortcutKeys =`
-		Get-ShortcutKey -Mode $(if($Hotkeys.Length -eq 0) {$Labels[$C]} else {$HotKeys[$C]})
+	for($C=0;$C -le $MenuItems.GetUpperBound(0);$C++){
+		$MenuItems[$C].Name =  $ItemPrefix + ($C+1)
+		$MenuItems[$C].Text = $Labels[$C]
+		if(!$SetSizeOff){$MenuItems[$C].Size = $ItemSize}
+		if(!$NoHotKeys){
+			$MenuItems[$C].ShortcutKeys =`
+			Get-ShortcutKey -Mode $(if($Hotkeys.Length -eq 0) {$Labels[$C]} else {$HotKeys[$C]})
 		}
 	}
 }
@@ -363,14 +363,10 @@ function Get-MediaDuration([String]$Path){
 }
 
 function Format-TotalDuration{
-    param([Parameter(Mandatory)][TimeSpan]$TS)
-    $Mask = if ($TS.Days -gt 0) {
-        'dd\:hh\:mm\:ss\.fff'
-    } else {
-        'hh\:mm\:ss\.fff'
-    }
-
-    return $TS.ToString($Mask)
+	param([Parameter(Mandatory)][TimeSpan]$TS)
+	$H = 'hh\:mm\:ss\.fff'
+	$Mask = if($TS.Days -gt 0){'dd\:'+$H}else{$H}
+	return $TS.ToString($Mask)
 }
 
 function Add-ListViewItem{
@@ -533,7 +529,7 @@ function Invoke-AudioFile{
 	Start-Sleep -Milliseconds ($OpenDelay*1000) #This allows the player time to load the audio file
 	$MediaPlayer.Volume = 1
 	$MediaPlayer.Play()
-	Do	{
+	Do{
 		$LblRuntime.Text = "Duration: [{0:$TimeFormat}]" -f $MediaPlayer.NaturalDuration.TimeSpan
 		$LblPosition.Text = & $Get_Position
 		if(([Audio]::Volume*$AudioVolume.Max) -ne $Slider.Value){
@@ -580,11 +576,11 @@ function Invoke-Playlist{
 			if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
 			#Loopback Control		
 			if($CheckBoxes[[CheckboxID]::Loop].Checked){
-				# AutoClose, Last Item
+				#AutoClose, Last Item
 				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
 					Invoke-Command -ScriptBlock $Exit_Click
 					break}
-				# End-of-list behavior
+				#End-of-list behavior
 				if(!$AutoClose -and ($C -eq $ListView1.Items.Count -1 -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
 					$C = -1}
 			}
@@ -633,7 +629,7 @@ function Get-Settings{
 				([W32RegKind]::DWord)       {0}
 			}
 		}
-		# Skip 'Default' key; it exists only for index alignment
+		#Skip 'Default' key; it exists only for index alignment
 		if($Key -eq 'Default'){Continue}
 		Add-Member -InputObject $NewObj -MemberType NoteProperty -Name $Key -Value $Value
 	}
@@ -665,7 +661,6 @@ function Install-Settings{
 	if($RS.MainLvwFont.Length -gt 0){
 		$RS.MainLvwFont = Build-FontObject -Font $RS.MainLvwFont
 	}
-
 	return $RS
 }
 
@@ -679,19 +674,18 @@ function Export-CheckedItems{
 	param(
 		[Parameter()][String]$AplOut = '',
 		[Parameter()][Switch]$ClearAfterExport,
-		[Parameter()][Switch]$Overwrite
-	)
+		[Parameter()][Switch]$Overwrite)
 
-	# Require at least 1 checked items to form a playlist
+	#Require at least 1 checked items to form a playlist
 	if($ListView1.CheckedItems.Count -lt 1){return}
 
-	# Build default output filename if none supplied
+	#Build default output filename if none supplied
 	if($AplOut -eq ''){
 		$AplFi = [IO.FileInfo]::New($PlayList)
 		$Base = '{0}_Export' -f [IO.Path]::GetFileNameWithoutExtension($AplFi.Name)
 		$AplOut = '{0}\{1}.apl' -f $AplFi.DirectoryName,$Base
 
-		# If overwrite not requested, auto-version until unique
+		#If overwrite not requested, auto-version until unique
 		if(-not $Overwrite){
 			$Version = 1
 			while ([IO.File]::Exists($AplOut)){
@@ -701,17 +695,17 @@ function Export-CheckedItems{
 		}
 	}
 
-	# Build playlist output array
+	#Build playlist output array
 	$ArrOut = @($PlayListHeader)
 	$ArrOut += $ListView1.CheckedItems | ForEach-Object {$_.Text}
 
-	# Write playlist file (overwrite allowed)
+	#Write playlist file (overwrite allowed)
 	Set-Content -Path $AplOut -Value $ArrOut -Encoding Default
 
 	#Display Confirmation
 	Show-MessageBoxEx -O $Form1 -M $AplOut -T 'Export Complete' -B OK -I Information
 
-	# Optional: clear checkmarks after export
+	#Optional: clear checkmarks after export
 	if($ClearAfterExport){Set-CheckedItems}
 }
 
@@ -763,7 +757,7 @@ function Show-MainForm{
 	$PicIcon = [Windows.Forms.PictureBox]::New()
 	$ChkMini = [Windows.Forms.Checkbox]::New()
 	$InitialFormWindowState = [Windows.Forms.FormWindowState]::Normal
-	# Control Arrays
+	#Control Arrays
 	$CheckBoxes = New-ObjectArray -TypeName Windows.Forms.Checkbox -Count 4
 	$MainMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 5
 	$FileMenuItems = New-ObjectArray -TypeName Windows.Forms.ToolStripMenuItem -Count 7
@@ -844,26 +838,25 @@ function Show-MainForm{
 	}
 
 	$ChkMini_Changed = {
-	# Hide ListView to suppress resize events
+	#Hide ListView to suppress resize events
 	$ListView1.Visible = $False
-	if ($ChkMini.Checked) {
-		# Enter MiniMode
+	if ($ChkMini.Checked){
+		#Enter MiniMode
 		$FormSize.Base = $Form1.Size
 		$Form1.Size = $Form1.MinimumSize = $FormSize.Mini
 		$PicIcon.Visible = $False
-	}
-	else {
-		# Exit MiniMode
+	}else{
+		#Exit MiniMode
 		$Form1.MinimumSize = $FormSize.Min
 		$Form1.Size = $FormSize.Base
 		$PicIcon.Visible = $True
 	}
 	RepositionTo-CenterScreen -Form $Form1
-	# Unhide ListView AFTER layout stabilizes
+	#Unhide ListView AFTER layout stabilizes
 	$ListView1.Visible = $True
-	# Now safely resize columns once
+	#Now safely resize columns once
 	Set-ListViewColumnWidths
-}
+	}
 
 	$Host_Click = {Show-HostInfo}
 
@@ -873,8 +866,8 @@ function Show-MainForm{
 		$TS = [TimeSpan]::Parse($Item.SubItems[[LvwColumn]::Duration].Text)
 		$Total += $TS
 	}
-
-	Show-MessageBoxEx -O $Form1 -M ("Checked Duration:`r`n{0}" -f (Format-TotalDuration $Total)) -T 'Checked Items' -B OK -I Information
+	$MV = ('Count: {1}{0}Value: {2}' -f "`r`n",$ListView1.CheckedItems.Count,(Format-TotalDuration $Total)) 
+	Show-MessageBoxEx -O $Form1 -M  $MV -T 'Checked Item Duration' -B OK -I Information
 	}
 
 	$PlayChecked = {
@@ -893,10 +886,7 @@ function Show-MainForm{
 		Show-PropertySheetDialog -P $ListView1.SelectedItems[0].Text
 	}
 
-	$GoTop = {
-		Set-FocusedListViewItem
-		$ListView1.Focus()
-	}
+	$GoTop = {Set-FocusedListViewItem;$ListView1.Focus()}
 
 	$ToggleChecked = {Set-CheckedItems -CheckedState:($ListView1.CheckedItems.Count -eq 0)}
 	#endregion
@@ -907,7 +897,7 @@ function Show-MainForm{
 	if((Test-Exists -Mode File -Location $DLL) -eq $False){
 		$ErrMsg = "DLL File: {0} Missing or Invalid - Job Aborted!" -f $DLL
 		$RV=Show-MessageBox -M $ErrMsg -T $Form1.Text -B OK -I Error
-		exit
+		Exit
 	}
 	$LvwCtxMenuItemsSize = [Drawing.Size]::New(219,32)
 	#endregion
@@ -1005,6 +995,7 @@ function Show-MainForm{
 	$MainMenuItems[[MainMenuItem]::Tools].DropDownItems.AddRange($ToolMenuItems)
 	$MainMenuItems[[MainMenuItem]::Help].DropDownItems.AddRange($HelpMenuItems)
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Exit,$FileMenuBar[1])
+
 	$MainMenuItems[[MainMenuItem]::File].DropDownItems.Insert([FileMenuItem]::Find,$FileMenuBar[0])
 	$Form1.Controls.Add($MainMenu)
 	$MainMenu.Items[[MainMenuItem]::Export].Enabled = $False
