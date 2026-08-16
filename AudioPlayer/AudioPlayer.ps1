@@ -155,7 +155,8 @@ $AutoSize = -[Windows.Forms.ColumnHeaderAutoResizeStyle]::ColumnContent #Must be
 $PlayListHeader = '*-<{0} - Playlist Header>-*' -f $App.Name
 $Disabled = '{0} Disabled, During Current Operation'
 $AudioFileTypes = @('.acc','.aif','.aiff','.au','.m4a','.mp3','.snd','.wav','.wma')
-$LvwColumnWidths = @(($IconSize.SmIco+2),$AutoSize,$AutoSize)
+$LvwColumnWidths = @(($IconSize.SmIco),$AutoSize,$AutoSize)
+if(![System.Windows.Forms.Application]::RenderWithVisualStyles){$LvwColumnWidths[[LvwColumn]::Icon]+=2}
 $StoredLvwWidth = 0
 $HelpFont = @()
 $RegKeys = [Enum]::GetNames([RegistryKey])
@@ -321,7 +322,7 @@ function Set-ButtonEnabledState{
 }
 
 function Set-ListViewColumnWidths{
-    If(!$ListView1.Visible){return}
+	If(!$ListView1.Visible){return}
 	$Sigma = 0
 	for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
@@ -846,12 +847,12 @@ function Show-MainForm{
 		$Form1.Size = $Form1.MinimumSize = $FormSize.Mini
 		$PicIcon.Visible = $False
 	}
-    else{
+	else{
 		#Exit MiniMode
 		$Form1.MinimumSize = $FormSize.Min
 		$Form1.Size = $FormSize.Base
 		$PicIcon.Visible = $True
-        $ListView1.Visible = $True
+		$ListView1.Visible = $True
 	}
 	RepositionTo-CenterScreen -Form $Form1
 	#Now safely resize columns once
