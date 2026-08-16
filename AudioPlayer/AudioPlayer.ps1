@@ -321,6 +321,7 @@ function Set-ButtonEnabledState{
 }
 
 function Set-ListViewColumnWidths{
+    If(!$ListView1.Visible){return}
 	$Sigma = 0
 	for($C=0;$C -lt $ListView1.Columns.Count;$C++){
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
@@ -838,22 +839,21 @@ function Show-MainForm{
 	}
 
 	$ChkMini_Changed = {
-	#Hide ListView to suppress resize events
-	$ListView1.Visible = $False
 	if ($ChkMini.Checked){
 		#Enter MiniMode
+	    $ListView1.Visible = $False
 		$FormSize.Base = $Form1.Size
 		$Form1.Size = $Form1.MinimumSize = $FormSize.Mini
 		$PicIcon.Visible = $False
-	}else{
+	}
+    else{
 		#Exit MiniMode
 		$Form1.MinimumSize = $FormSize.Min
 		$Form1.Size = $FormSize.Base
 		$PicIcon.Visible = $True
+        $ListView1.Visible = $True
 	}
 	RepositionTo-CenterScreen -Form $Form1
-	#Unhide ListView AFTER layout stabilizes
-	$ListView1.Visible = $True
 	#Now safely resize columns once
 	Set-ListViewColumnWidths
 	}
