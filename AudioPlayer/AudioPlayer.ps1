@@ -2,14 +2,15 @@
 .NOTES
 -------------------------------------
 Name:	AudioPlayer.ps1
-Version: 2.3 - 2026/08/07
+Version: 2.4 - 2026/08/17
 Author:  Randy E. Turner
 Email:   turner.randy21@yahoo.com
 -------------------------------------
 Revision History:
+V2.4 - 2026/08/17 - Fixed ListView1 Behavior Bug
 V2.3 - 2026/08/07 - Added Export functions
-V2.2 - 2026/07/26 - Added Checked item support.
-V2.1 - 2026/02/25 - Added After Selection AutoClose option.
+V2.2 - 2026/07/26 - Added Checked item support
+V2.1 - 2026/02/25 - Added After Selection AutoClose option
 V2.0 - 2026/02/05 - Changed Registry Library
 v1.0 - 2016/04/01 - Original Release
 
@@ -147,7 +148,7 @@ $StopPlayback = `
 $LvwSortEnabled = $True
 $PlayListErrors = $False
 $PlayListDuration = [TimeSpan]0
-$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.3 - 2026/08/07'}
+$App = [PSCustomObject][Ordered]@{Name='PS Audio Player';Vers='Version: 2.4 - 2026/08/17'}
 $AudioVolume = [PSCustomObject][Ordered]@{Min=0;Max=100}
 $IconSize = [PSCustomObject][Ordered]@{Form=16;LgIco=32;Logo=64;SmIco=24;Splash=256}
 $FormSize = [PSCustomObject][Ordered]@{Base=0;Min=0;Mini=0}
@@ -171,9 +172,9 @@ $RegistryKeyKind = @{
 	MainFormSize = [W32RegKind]::MultiString
 	MainLvwColumnWidth = [W32RegKind]::MultiString
 	MainLvwFont = [W32RegKind]::MultiString
-	Minimized = [W32RegKind]::Binary
-	MiniMode = [W32RegKind]::Binary
-	Playlist = [W32RegKind]::String
+	Minimized = [W32RegKind]::Bry
+	Playlist = [W32RegKind]::Strininary
+	MiniMode = [W32RegKind]::Binag
 	RecurseDirectory = [W32RegKind]::Binary
 	Volume = [W32RegKind]::DWord
 	}
@@ -352,8 +353,8 @@ Param(
 	}
 }
 
-#Gets Media File Duration String using Shell.ExtendedProperty Method
 function Get-MediaDuration([String]$Path){
+	#Gets Media File Duration String using Shell.ExtendedProperty Method
 	$DurationMask = '{0:hh\:mm\:ss\.fff}' #Hours:Minutes:Seconds.Milliseconds
 	$Folder = Split-Path -Parent -Path $Path
 	$File = Split-Path -Leaf -Path $Path
@@ -483,10 +484,11 @@ $ListView1.EndUpdate()
 function Open-Playlist{
 param([Parameter()][Alias('NP')][Switch]$NoPrompt)
 
-if($LvwSortEnabled -eq $False){
+if(!$LvwSortEnabled){
 	Show-MessageBox -M ($Disabled -f 'Open') -T $Form1.Text -Icon Warning
+	return
 	}
-else{
+
 	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Disable
 
 	if(!$NoPrompt.IsPresent){ 
@@ -517,7 +519,6 @@ else{
 		Set-ButtonEnabledState -Mode PlayListLoaded}
 	else{Set-ButtonEnabledState -Mode PlayListLoading}
 	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Enable
-	}
 }
 
 function Invoke-AudioFile{
@@ -550,49 +551,107 @@ function Invoke-AudioFile{
 	$MediaPlayer.Close()
 }
 
+function Get-ChecklistSnapshot{
+	param(
+		[Parameter(Mandatory)][Alias('M')]
+			[ValidateNotNullOrEmpty()]
+			[ValidateSet('Setup','Update')]
+			[String]$Mode)
+			
+	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
+	$ValidModes = $MyParam['Mode'].Attributes.ValidValues
+	$ModeIdx = [Array]::IndexOf($ValidModes,$Mode)
+	
+	if($ModeIdx -eq 0){$RV = $Null}
+	if($ListView1.CheckBoxes -and $ListView1.CheckedIndices.Count -gt 0){
+		$RV = @($ListView1.CheckedIndices)
+	}
+	$RV
+}
+
 function Invoke-Playlist{
-	if($LvwSortEnabled -eq $False){
-		Show-MessageBox -M ($Disabled -f 'Play') -T $Form1.Text -Icon Warning}
+	if(!$LvwSortEnabled){
+		Show-MessageBox -M ($Disabled -f 'Play') -T $Form1.Text -Icon Warning
+		return
+	}
+
+	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled
+	$Script:PausePlayback = `
+	$Script:StopPlayback  = $False
+
+	$CheckedOrder = Get-ChecklistSnapshot -M Setup
+
+	if($CheckedOrder){
+		$Idx = 0
+		$C   = $CheckedOrder[$Idx]
+	}
 	else{
-		$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Disable
-		$Script:PausePlayback = `
-		$Script:StopPlayback = $False
-		$Item = [System.Windows.Forms.ListViewItem]::New()
-		for($C=$ListView1.SelectedItems[0].Index;$C -lt $ListView1.Items.Count;$C++){
-			if($ListView1.CheckBoxes){
-				$C = if($C -eq 0){
-						$Inx = 0
-						$ListView1.CheckedIndices[0]
-						}
-					 else{
-							$Inx += 1
-							$ListView1.CheckedIndices[$Inx]
-						 }
+		$C = $ListView1.SelectedItems[0].Index
+	}
+
+	for(<#$C Already Declared#>; $C -lt $ListView1.Items.Count; $C++){
+		if($CheckedOrder){
+			if($Idx -ge $CheckedOrder.Count){break}
+			$C = $CheckedOrder[$Idx]
+			$Idx++
+		}
+
+		$Item = $ListView1.Items[$C]
+		$Item.Selected = `
+		$Item.Focused  = $True
+		$Item.EnsureVisible()
+
+		$LblStatus.Text = 'Now Playing:  {0}' -f $Item.SubItems[[LvwColumn]::File].Text
+
+		Invoke-AudioFile -Path $Item.Text
+
+		if($StopPlayback){break}
+		
+		$CheckedOrder = Get-ChecklistSnapshot -M Update
+
+		if($CheckedOrder){
+			$LastItem = ($Idx -ge $CheckedOrder.Count)}
+		else{
+			$LastItem = ($C -eq ($ListView1.Items.Count - 1))}
+
+		if($AutoClose -and $LastItem){
+			Invoke-Command -ScriptBlock $Exit_Click
+			break
+		}
+
+		if($CheckBoxes[[CheckboxID]::AfterSelected].Checked -and
+			$CheckBoxes[[CheckboxID]::Loop].Checked -and
+			$AutoClose){
+			Invoke-Command -ScriptBlock $Exit_Click
+			break
+		}
+
+		if($CheckBoxes[[CheckboxID]::Loop].Checked -and $LastItem -and !$AutoClose){
+			if($ListView1.CheckBoxes -and $ListView1.CheckedIndices.Count -gt 0){
+				$CheckedOrder = @($ListView1.CheckedIndices)
+				$Idx = 0
+				$C   = $CheckedOrder[$Idx] - 1
 			}
-			$Item = $ListView1.Items[$C]
-			$Item.Selected = `
-			$Item.Focused = $True
-			$Item.EnsureVisible()
-			$LblStatus.Text = 'Now Playing:  {0}' -f $Item.Subitems[[LvwColumn]::File].Text
-			Invoke-AudioFile -Path $Item.Text
-			if($StopPlayback -eq $True){$C=$ListView1.Items.Count}
-			#Loopback Control		
-			if($CheckBoxes[[CheckboxID]::Loop].Checked){
-				#AutoClose, Last Item
-				if($AutoClose -and ($C -eq $ListView1.Items.Count -1 -or $CheckBoxes[[CheckboxID]::AfterSelected].Checked -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
-					Invoke-Command -ScriptBlock $Exit_Click
-					break}
-				#End-of-list behavior
-				if(!$AutoClose -and ($C -eq $ListView1.Items.Count -1 -or ($ListView1.CheckBoxes -and $Inx -eq ($ListView1.CheckedIndices.Count - 1)))){
-					$C = -1}
+			else{
+				$CheckedOrder = $Null
+				$C = -1
 			}
 		}
-		if($AutoClose)
-			{Invoke-Command -ScriptBlock $Exit_Click}
-		else
-			{Set-ButtonEnabledState -Mode StopClicked}
-		$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled #Enable
 	}
+
+	#
+	# AutoClose must still fire if Stop was clicked
+	#
+	if($AutoClose -and $StopPlayback -and $ListView1.CheckBoxes){
+		Invoke-Command -ScriptBlock $Exit_Click
+		return
+	}
+
+	if(!$AutoClose){
+		Set-ButtonEnabledState -Mode StopClicked
+	}
+
+	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled
 }
 
 function Save-Settings{
@@ -713,14 +772,29 @@ function Export-CheckedItems{
 
 function Set-CheckedItems{
 	param([Parameter()][Switch]$CheckedState)
-	$Target = if($CheckedState.IsPresent){$ListView1.Items}Else{$ListView1.CheckedItems}
-	if($ListView1.CheckBoxes){
-		foreach ($Item in $Target){
-			$Item.Checked = $CheckedState.IsPresent
-		}
+
+	if(-not $ListView1.CheckBoxes){return}
+
+	# Preserve current selection index
+	$Hold = $Null
+	if($ListView1.SelectedItems.Count -gt 0){$Hold = $ListView1.SelectedItems[0].Index}
+
+	# Determine target set
+	$Target = if($CheckedState.IsPresent){$ListView1.Items}
+	else{$ListView1.CheckedItems}
+
+	# Prevent UI flicker and event storms
+	$ListView1.BeginUpdate()
+	foreach ($Item in $Target){$Item.Checked = $CheckedState.IsPresent}
+	$ListView1.EndUpdate()
+
+	# Restore selection cleanly
+	if ($Hold -ne $Null -and $Hold -lt $ListView1.Items.Count) {
+		$ListView1.Items[$Hold].Selected = `
+		$ListView1.Items[$Hold].Focused  = $True
+		$ListView1.Items[$Hold].EnsureVisible()
 	}
 }
-
 #endregion Utility functions
 
 #region Add Custom DLL
@@ -868,12 +942,20 @@ function Show-MainForm{
 		$Total += $TS
 	}
 	$MV = ('Count: {1}{0}Value: {2}' -f "`r`n",$ListView1.CheckedItems.Count,(Format-TotalDuration $Total)) 
-	Show-MessageBoxEx -O $Form1 -M  $MV -T 'Checked Item Duration' -B OK -I Information
+	Show-MessageBoxEx -O $Form1 -M $MV -T 'Checked Item Duration' -B OK -I Information
 	}
 
 	$PlayChecked = {
 		$this.Checked = !$this.Checked
+		$Hold = $ListView1.SelectedItems[0].Index
+		$ListView1.BeginUpdate()
 		$ListView1.CheckBoxes = $this.Checked
+		if ($Hold -ne $Null -and $Hold -lt $ListView1.Items.Count) {
+		$ListView1.Items[$Hold].Selected = `
+		$ListView1.Items[$Hold].Focused  = $True
+		$ListView1.Items[$Hold].EnsureVisible()
+		}
+		$ListView1.EndUpdate()
 		$MainMenu.Items[[MainMenuItem]::Export].Enabled = $this.Checked
 		}
 
@@ -889,7 +971,8 @@ function Show-MainForm{
 
 	$GoTop = {Set-FocusedListViewItem;$ListView1.Focus()}
 
-	$ToggleChecked = {Set-CheckedItems -CheckedState:($ListView1.CheckedItems.Count -eq 0)}
+	$ToggleChecked = {
+		Set-CheckedItems -CheckedState:($ListView1.CheckedItems.Count -eq 0)}
 	#endregion
 
 	#region Common Control Variables
@@ -1147,6 +1230,33 @@ function Show-MainForm{
 		$ListView1.Columns.Add($LvwColumnNames[$C])|Out-Null
 		$ListView1.Columns[$C].Width=$LvwColumnWidths[$C]
 	}
+
+	$ListView1.Add_Click({
+		if($ListView1.SelectedItems.Count -gt 0){
+			$Item = $ListView1.SelectedItems[0]
+			$Item.Focused = $True
+			$Item.EnsureVisible()
+		}
+	})
+	$ListView1.Add_DoubleClick({
+		# No manual toggle needed ItemCheck already handled it.
+		# No UI updates needed the traveling pointer already ensures visibility/focus.
+	})
+	$ListView1.Add_ItemCheck({
+		param($sender, $e)
+		$Item = $ListView1.Items[$e.Index]
+		$Item.Selected = `
+		$Item.Focused  = $True
+	})
+
+	$ListView1.Add_SelectedIndexChanged({
+		if($ListView1.SelectedItems.Count -gt 0){
+			$LblStatus.Text = 'Selected: {0}' -f $ListView1.SelectedItems[0].SubItems[[LvwColumn]::File].Text
+			$Item = $ListView1.SelectedItems[0]
+			$Item.Focused = $True
+			$Item.EnsureVisible()
+		}
+	})
 
 	$ColumnClick = {
 		if($LvwSortEnabled -and $This.items.Count -gt 0){
