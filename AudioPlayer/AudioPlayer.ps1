@@ -579,20 +579,20 @@ function Invoke-Playlist{
 	$Script:PausePlayback = `
 	$Script:StopPlayback  = $False
 
-	$CheckedOrder = Get-ChecklistSnapshot -M Setup
+	$CheckedList = Get-ChecklistSnapshot -M Setup
 
-	if($CheckedOrder){
+	if($CheckedList){
 		$Idx = 0
-		$C   = $CheckedOrder[$Idx]
+		$C   = $CheckedList[$Idx]
 	}
 	else{
 		$C = $ListView1.SelectedItems[0].Index
 	}
 
 	for(<#$C Already Declared#>; $C -lt $ListView1.Items.Count; $C++){
-		if($CheckedOrder){
-			if($Idx -ge $CheckedOrder.Count){break}
-			$C = $CheckedOrder[$Idx]
+		if($CheckedList){
+			if($Idx -ge $CheckedList.Count){break}
+			$C = $CheckedList[$Idx]
 			$Idx++
 		}
 
@@ -607,10 +607,10 @@ function Invoke-Playlist{
 
 		if($StopPlayback){break}
 		
-		$CheckedOrder = Get-ChecklistSnapshot -M Update
+		$CheckedList = Get-ChecklistSnapshot -M Update
 
-		if($CheckedOrder){
-			$LastItem = ($Idx -ge $CheckedOrder.Count)}
+		if($CheckedList){
+			$LastItem = ($Idx -ge $CheckedList.Count)}
 		else{
 			$LastItem = ($C -eq ($ListView1.Items.Count - 1))}
 
@@ -628,21 +628,18 @@ function Invoke-Playlist{
 
 		if($CheckBoxes[[CheckboxID]::Loop].Checked -and $LastItem -and !$AutoClose){
 			if($ListView1.CheckBoxes -and $ListView1.CheckedIndices.Count -gt 0){
-				$CheckedOrder = @($ListView1.CheckedIndices)
+				$CheckedList = @($ListView1.CheckedIndices)
 				$Idx = 0
-				$C   = $CheckedOrder[$Idx] - 1
+				$C   = $CheckedList[$Idx] - 1
 			}
 			else{
-				$CheckedOrder = $Null
+				$CheckedList = $Null
 				$C = -1
 			}
 		}
 	}
 
-	#
-	# AutoClose must still fire if Stop was clicked
-	#
-	if($AutoClose -and $StopPlayback -and $ListView1.CheckBoxes){
+	if($AutoClose -and $StopPlayback){
 		Invoke-Command -ScriptBlock $Exit_Click
 		return
 	}
