@@ -560,9 +560,8 @@ function Get-ChecklistSnapshot{
 			
 	$MyParam = (Get-Command -Name $MyInvocation.MyCommand).Parameters
 	$ValidModes = $MyParam['Mode'].Attributes.ValidValues
-	$ModeIdx = [Array]::IndexOf($ValidModes,$Mode)
 	
-	if($ModeIdx -eq 0){$RV = $Null}
+	if([Array]::IndexOf($ValidModes,$Mode) -eq 0){$RV = $Null}
 	if($ListView1.CheckBoxes -and $ListView1.CheckedIndices.Count -gt 0){
 		$RV = @($ListView1.CheckedIndices)
 	}
@@ -589,7 +588,7 @@ function Invoke-Playlist{
 		$C = $ListView1.SelectedItems[0].Index
 	}
 
-	for(<#$C Already Declared#>; $C -lt $ListView1.Items.Count; $C++){
+	for(<#$C Declared Above#>; $C -lt $ListView1.Items.Count; $C++){
 		if($CheckedList){
 			if($Idx -ge $CheckedList.Count){break}
 			$C = $CheckedList[$Idx]
