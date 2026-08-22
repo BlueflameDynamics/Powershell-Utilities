@@ -577,6 +577,12 @@ function Invoke-Playlist{
 	$LvwSortEnabled = Toggle-Boolean -Target $LvwSortEnabled
 	$Script:PausePlayback = `
 	$Script:StopPlayback  = $False
+	if ($AutoPlay -and -not $CheckedList) {
+		$Idx = 0
+		$CheckedList = @(0)
+	}
+
+
 
 	$CheckedList = Get-ChecklistSnapshot -M Setup
 
@@ -946,8 +952,12 @@ function Show-MainForm{
 		$Hold = $ListView1.SelectedItems[0].Index
 		$ListView1.BeginUpdate()
 		$ListView1.CheckBoxes = $this.Checked
+		#Force item 0 selected because CheckBoxes=True selects last item
+		$ListView1.Items[0].Selected = $True
+		if($AutoPlay -and $ListView1.CheckBoxes){ 
+			$ListView1.SelectedItems[0].Checked = $True}
 		if ($Hold -ne $Null -and $Hold -lt $ListView1.Items.Count) {
-		$ListView1.Items[$Hold].Selected = `
+		$ListView1.Items[$Hold].Selected = $True
 		$ListView1.Items[$Hold].Focused  = $True
 		$ListView1.Items[$Hold].EnsureVisible()
 		}
